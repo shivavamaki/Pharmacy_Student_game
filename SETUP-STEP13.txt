@@ -1,0 +1,34 @@
+THE PHARMACY GUILD — STEP 13
+Adventure Recape merged into the same Apps Script backend
+
+FILES
+- Code.gs
+- Index.html
+- AdventureRecap.html
+- SETUP-STEP13.txt
+- MERGE-NOTES.md
+
+INSTALL / UPDATE
+1. Open the Google Sheet and Apps Script project currently used for Step 12.
+2. Replace Code.gs.
+3. Replace Index.html.
+4. Add a new HTML file named exactly: AdventureRecap
+5. Paste AdventureRecap.html.
+6. Save.
+7. Deploy > Manage deployments > Edit > New version > Deploy.
+8. Open the normal /exec URL.
+9. Login and choose “Adventure Recape” from the navigation.
+
+DATA
+- Existing Users, Parties, Quests, Progress, Evidence, XP and Badge sheets remain unchanged.
+- Evaluation answers are saved to a new sheet:
+  AdventureRecapResponses
+
+SESSION
+- Adventure Recape uses the same session token key: guildToken.
+- When opened from the main app after login, the current user session is reused.
+- If the session expired, the same Guild account can log in again.
+
+NAME
+The requested display name is used exactly as:
+Adventure Recape

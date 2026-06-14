@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adventure Recape</title>
+  <style>
+    :root{
+      --bg:#1d2240;
+      --panel:#fff4d6;
+      --panel2:#ffe6a7;
+      --ink:#2b2440;
+      --muted:#6c6482;
+      --blue:#78d8ff;
+      --mint:#7dffbd;
+      --pink:#ff9ccf;
+      --yellow:#ffd45e;
+      --purple:#a891ff;
+      --danger:#ff7777;
+      --line:#403659;
+      --shadow:#17142b;
+      --pixel: 4px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family: "Trebuchet MS", Tahoma, sans-serif;color:var(--ink);background:
+      radial-gradient(circle at 20% 10%, rgba(120,216,255,.18), transparent 22%),
+      radial-gradient(circle at 85% 35%, rgba(255,156,207,.18), transparent 20%),
+      linear-gradient(180deg,#22284d,#15172a 65%,#0e1020);}
+    body{padding:18px}
+
+    .app{max-width:1180px;margin:0 auto}
+    .pixel-card{
+      background:var(--panel);
+      border:4px solid var(--line);
+      box-shadow:8px 8px 0 var(--shadow);
+      border-radius:0;
+    }
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:14px 16px;margin-bottom:16px;color:var(--panel);
+    }
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      width:48px;height:48px;border:4px solid var(--panel);box-shadow:4px 4px 0 #000;
+      background:
+        linear-gradient(90deg, transparent 36%, #fff 36% 64%, transparent 64%),
+        linear-gradient(transparent 36%, #fff 36% 64%, transparent 64%),
+        var(--mint);
+      image-rendering:pixelated;
+    }
+    .brand h1{font-size:24px;margin:0;letter-spacing:.5px;text-shadow:3px 3px 0 #000}
+    .brand p{margin:3px 0 0;color:#cdd7ff;font-size:13px}
+    .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+    button,.btn{
+      border:3px solid var(--line);background:var(--yellow);color:var(--ink);
+      padding:10px 13px;font-weight:800;cursor:pointer;box-shadow:4px 4px 0 var(--shadow);
+      font-family:inherit;transition:transform .06s ease, box-shadow .06s ease;
+    }
+    button:hover,.btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--shadow)}
+    button:active,.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--shadow)}
+    button.secondary{background:#e6e8ff}
+    button.green{background:var(--mint)}
+    button.pink{background:var(--pink)}
+    button.blue{background:var(--blue)}
+    button.danger{background:var(--danger)}
+    button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.6)}
+
+    .layout{display:grid;grid-template-columns:310px 1fr;gap:16px}
+    .sidebar{padding:14px;align-self:start;position:sticky;top:12px}
+    .main{min-height:700px;padding:18px}
+
+    .hero{
+      display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:center;min-height:590px
+    }
+    .hero h2{font-size:42px;line-height:1.05;margin:0 0 12px}
+    .hero .tag{display:inline-block;background:var(--blue);border:3px solid var(--line);padding:6px 10px;font-weight:800;margin-bottom:12px}
+    .hero p{font-size:17px;line-height:1.6;color:#493f64}
+    .pixel-scene{
+      height:340px;border:4px solid var(--line);background:
+        linear-gradient(#85d7ff 0 45%, #7bd36e 45% 100%);
+      position:relative;overflow:hidden;box-shadow:inset 0 -20px 0 rgba(0,0,0,.12)
+    }
+    .hospital{
+      position:absolute;right:28px;bottom:64px;width:180px;height:165px;background:#f6fbff;border:4px solid var(--line);
+      box-shadow:6px 6px 0 rgba(0,0,0,.25)
+    }
+    .hospital:before{
+      content:"";position:absolute;left:56px;top:-48px;width:68px;height:48px;background:#f6fbff;border:4px solid var(--line);border-bottom:0
+    }
+    .cross-v,.cross-h{position:absolute;background:#ff5f83}
+    .cross-v{width:18px;height:54px;left:81px;top:18px}
+    .cross-h{width:54px;height:18px;left:63px;top:36px}
+    .window{position:absolute;width:28px;height:25px;background:#aee6ff;border:3px solid var(--line)}
+    .w1{left:20px;top:82px}.w2{right:20px;top:82px}.w3{left:20px;top:122px}.w4{right:20px;top:122px}
+    .avatar-big{position:absolute;left:55px;bottom:55px;transform:scale(2.4);transform-origin:left bottom}
+    .pixel-person{width:38px;height:58px;position:relative;image-rendering:pixelated}
+    .head{position:absolute;left:8px;top:0;width:22px;height:22px;background:#ffd1a3;border:3px solid var(--line)}
+    .hair{position:absolute;left:5px;top:-4px;width:28px;height:12px;background:#3a2a25;border:3px solid var(--line);border-bottom:0}
+    .body{position:absolute;left:5px;top:24px;width:28px;height:25px;background:#fff;border:3px solid var(--line)}
+    .body:after{content:"";position:absolute;left:8px;top:4px;width:7px;height:13px;background:var(--mint);border-left:2px solid var(--line);border-right:2px solid var(--line)}
+    .legs{position:absolute;left:9px;top:49px;width:20px;height:9px;background:#3a4b6d;border:3px solid var(--line)}
+    .bubble{
+      position:absolute;left:110px;bottom:210px;background:#fff;border:4px solid var(--line);padding:10px;max-width:190px;
+      font-weight:800;box-shadow:5px 5px 0 rgba(0,0,0,.25)
+    }
+
+    .profile-box{padding:12px;margin-bottom:12px;background:#fff8e6;border:3px solid var(--line)}
+    .small-title{font-weight:900;margin:0 0 8px;font-size:14px;color:#554a75;text-transform:uppercase}
+    .progress-wrap{margin:12px 0}
+    .progress-label{display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:#eaf2ff;margin-bottom:6px}
+    .bar{height:18px;border:3px solid var(--line);background:#15172a}
+    .bar > div{height:100%;width:0;background:linear-gradient(90deg,var(--mint),var(--blue),var(--pink));transition:width .25s ease}
+
+    .map{display:flex;flex-direction:column;gap:10px}
+    .map-node{
+      display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;padding:8px;background:#fff8e6;border:3px solid var(--line);
+      cursor:pointer;position:relative
+    }
+    .map-node.locked{opacity:.45;cursor:not-allowed}
+    .map-node.active{background:var(--yellow);transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--shadow)}
+    .map-node.done{background:#dfffe9}
+    .node-icon{
+      width:42px;height:42px;border:3px solid var(--line);display:grid;place-items:center;background:#fff;font-size:21px
+    }
+    .node-name{font-weight:900;font-size:14px}.node-sub{font-size:12px;color:#665c7d;margin-top:2px}
+    .map-node:not(:last-child):after{
+      content:"";position:absolute;left:27px;bottom:-13px;width:8px;height:13px;background:var(--line)
+    }
+
+    .screen{display:none}.screen.active{display:block}
+    .section-title{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .stage-icon{font-size:34px;width:58px;height:58px;border:4px solid var(--line);display:grid;place-items:center;background:#fff;box-shadow:4px 4px 0 var(--shadow)}
+    h2{font-size:30px;margin:0}.subtitle{margin:3px 0 0;color:var(--muted);font-weight:700}
+    .question-card{background:#fff8e6;border:3px solid var(--line);padding:14px;margin:14px 0;box-shadow:4px 4px 0 rgba(0,0,0,.15)}
+    .q-title{font-size:18px;font-weight:900;margin-bottom:10px}
+    .q-hint{font-size:13px;color:var(--muted);margin-top:-4px;margin-bottom:10px}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+    .choice{
+      border:3px solid var(--line);background:#fff;padding:11px;cursor:pointer;font-weight:800;min-height:72px;
+      display:flex;gap:8px;align-items:center;box-shadow:3px 3px 0 rgba(0,0,0,.18);user-select:none
+    }
+    .choice small{display:block;font-weight:700;color:#6d6380;margin-top:3px;line-height:1.25}
+    .choice .emoji{font-size:28px}
+    .choice.selected{background:var(--mint)}
+    .choice.pink.selected{background:var(--pink)}
+    .choice.blue.selected{background:var(--blue)}
+    .choice.yellow.selected{background:var(--yellow)}
+
+    input[type="text"], textarea, select, input[type="number"]{
+      width:100%;border:3px solid var(--line);padding:11px;font-family:inherit;font-size:15px;background:#fff;outline:none;color:var(--ink)
+    }
+    textarea{min-height:90px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    label.checkrow{display:flex;gap:8px;align-items:center;font-weight:800;margin:8px 0}
+    input[type="checkbox"]{width:20px;height:20px;accent-color:#7dffbd}
+    .hearts{display:flex;gap:5px;font-size:28px;cursor:pointer}
+    .heart{filter:grayscale(1);opacity:.55}
+    .heart.on{filter:none;opacity:1}
+    .rating-row{display:grid;grid-template-columns:1fr 180px;gap:10px;align-items:center;padding:9px;border:2px dashed #8b7aa5;margin:8px 0;background:#fff}
+
+    .nav-actions{display:flex;justify-content:space-between;gap:10px;margin-top:18px}
+    .pill{
+      display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border:3px solid var(--line);background:#fff;font-weight:900;margin:4px 4px 0 0
+    }
+    .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+    .summary-card{background:#fff;border:3px solid var(--line);padding:12px}
+    .summary-card h3{margin:0 0 8px;font-size:18px}
+    pre{white-space:pre-wrap;word-break:break-word;background:#15172a;color:#e8f7ff;border:3px solid var(--line);padding:12px;max-height:280px;overflow:auto}
+
+    .toast{
+      position:fixed;right:18px;bottom:18px;background:#fff;border:4px solid var(--line);box-shadow:6px 6px 0 #000;padding:12px;font-weight:900;display:none;z-index:20
+    }
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:30;padding:18px}
+    .modal{max-width:860px;width:100%;max-height:86vh;overflow:auto;padding:16px}
+
+    .dashboard-bars{display:grid;gap:10px;margin-top:10px}
+    .dashbar{display:grid;grid-template-columns:180px 1fr 42px;gap:8px;align-items:center}
+    .dashbar .track{height:20px;background:#15172a;border:3px solid var(--line)}
+    .dashbar .fill{height:100%;background:var(--blue);width:0}
+    .footer-note{margin-top:16px;color:#d8defc;text-align:center;font-size:13px}
+
+
+    .auth-screen{position:fixed;inset:0;z-index:100;background:linear-gradient(180deg,#22284d,#101225);display:flex;align-items:center;justify-content:center;padding:18px}
+    .auth-card{width:min(520px,100%);padding:22px;text-align:center}
+    .auth-card .logo{margin:0 auto 14px}
+    .auth-card h1{margin:0 0 6px;font-size:30px}
+    .auth-card p{color:var(--muted);line-height:1.5}
+    .auth-fields{display:grid;gap:12px;margin:18px 0;text-align:left}
+    .auth-error{min-height:24px;color:#a10028;font-weight:900;margin-top:10px}
+    .user-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:3px solid var(--line);color:var(--ink);font-weight:900}
+    .hidden{display:none!important}
+
+
+    .ending-shell{background:#101426;color:#fff7d6;border:4px solid var(--line);padding:18px;box-shadow:8px 8px 0 #000;overflow:hidden}
+    .ending-score{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+    .score-tile{background:#fff4d6;color:var(--ink);border:3px solid var(--line);padding:12px;text-align:center;box-shadow:4px 4px 0 #000}
+    .score-number{font-size:36px;font-weight:900;line-height:1}
+    .credits-viewport{height:470px;position:relative;overflow:hidden;border:4px solid #756b9c;background:linear-gradient(#090b18,#161d3d 55%,#273d64)}
+    .credits-stars{position:absolute;inset:0;opacity:.55;background-image:radial-gradient(#fff 1px,transparent 1px);background-size:31px 31px;animation:starDrift 12s linear infinite}
+    .credits-roll{position:absolute;left:8%;right:8%;top:100%;text-align:center;animation:creditsUp 28s linear infinite;font-size:18px;line-height:1.65;text-shadow:2px 2px 0 #000}
+    .credits-roll h2{font-size:34px;color:var(--yellow);margin:30px 0 8px}
+    .credits-roll h3{font-size:25px;color:var(--mint);margin:26px 0 8px}
+    .credits-roll .ending-icon{font-size:74px;display:block;margin-bottom:8px}
+    .credits-roll .credit-small{font-size:14px;color:#dce3ff}
+    .credits-controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+    @keyframes creditsUp{from{transform:translateY(0)}to{transform:translateY(-155%)}}
+    @keyframes starDrift{from{background-position:0 0}to{background-position:60px 120px}}
+    .music-note{display:inline-block;animation:noteBounce .7s alternate infinite}
+    @keyframes noteBounce{to{transform:translateY(-4px)}}
+
+    @media(max-width:850px){
+      body{padding:10px}
+      .layout{grid-template-columns:1fr}
+      .sidebar{position:relative;top:auto}
+      .hero{grid-template-columns:1fr}
+      .row{grid-template-columns:1fr}
+      .rating-row{grid-template-columns:1fr}
+      .topbar{align-items:flex-start;flex-direction:column}
+      .brand h1{font-size:20px}
+    }
+  </style>
+</head>
+<body>
+
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card pixel-card">
+      <div class="logo"></div>
+      <h1>Adventure Recape</h1>
+      <p>Use the same Pharmacy Guild account to recap and evaluate your clerkship adventure.<br>เข้าสู่ระบบด้วยชื่อ–นามสกุล โดยไม่ต้องใส่ “นาย/นางสาว”</p>
+      <div class="auth-fields">
+        <label><b>Username / ชื่อผู้ใช้</b>
+          <input type="text" id="loginUsername" autocomplete="username" placeholder="ตัวอย่าง: สกาวใจ ชาวงษ์">
+        </label>
+        <label><b>Password / รหัสผ่าน</b>
+          <input type="password" id="loginPassword" autocomplete="current-password" placeholder="รหัสเริ่มต้นเหมือน Username">
+        </label>
+      </div>
+      <button id="loginButton" class="green" onclick="login()">Start Recape</button>
+      <div id="authError" class="auth-error"></div>
+      <p style="font-size:12px">Default password is the same as your username. เว้นวรรคให้ตรงกับชื่อในรายชื่อ</p>
+    </div>
+  </div>
+
+  <div class="app hidden" id="gameApp">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>Adventure Recape</h1>
+          <p>Evaluation quest • Same Apps Script backend • Thai + English</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="secondary" onclick="window.location.href='<?!= webAppUrl ?>'">← Back to Pharmacy Guild</button>
+        <span class="user-chip" id="loggedUserChip">Not logged in</span>
+        <button class="danger" onclick="logout()">Logout</button>
+        <button class="green hidden" id="analyticsButton" onclick="openAnalytics()">📊 Analytics</button>
+        <button class="secondary" id="musicButton" onclick="toggleMusic()">♫ Music: OFF</button>
+        <button class="blue" onclick="exportJSON()">Export JSON</button>
+        <button class="pink" onclick="resetQuest()">Reset</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar pixel-card">
+        <div class="profile-box">
+          <p class="small-title">Current Player</p>
+          <div><b id="sideName">Student</b></div>
+          <div id="sideCharacter" style="font-size:13px;color:#6c6482;margin-top:3px">No character selected</div>
+        </div>
+        <div class="progress-label"><span id="stageText">Stage 0 / 8</span><span id="pctText">0%</span></div>
+        <div class="bar"><div id="progressBar"></div></div>
+        <div class="progress-wrap"></div>
+        <div class="map" id="map"></div>
+      </aside>
+
+      <main class="main pixel-card">
+        <section id="screen-start" class="screen active">
+          <div class="hero">
+            <div>
+              <span class="tag">🎮 Interview Quest</span>
+              <h2>แบบสัมภาษณ์ที่ไม่เหมือนสอบ</h2>
+              <p>
+                ให้นักศึกษาเดินทางผ่านด่านต่าง ๆ เพื่อเล่า feeling ต่อ clerkship,
+                preceptor และ pharmacy department แบบสบาย ๆ แต่ได้ข้อมูลนำไปพัฒนาการฝึกงานจริง
+              </p>
+              <div class="question-card">
+                <div class="q-title">🔐 Registered Player / ผู้เล่นที่เข้าสู่ระบบ</div>
+                <div id="registeredPlayerText">Loading player...</div>
+                <div class="q-hint" style="margin-top:10px">คำตอบจะเชื่อมกับบัญชีนักศึกษาที่ Login และบันทึกลง Google Sheet เมื่อจบเกม</div>
+              </div>
+              <button class="green" onclick="startQuest()">Start Interview Quest</button>
+            </div>
+            <div class="pixel-scene">
+              <div class="hospital">
+                <div class="cross-v"></div><div class="cross-h"></div>
+                <div class="window w1"></div><div class="window w2"></div><div class="window w3"></div><div class="window w4"></div>
+              </div>
+              <div class="avatar-big"><div class="pixel-person"><div class="hair"></div><div class="head"></div><div class="body"></div><div class="legs"></div></div></div>
+              <div class="bubble">Welcome, future pharmacist!</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="screen-stage" class="screen"></section>
+        <section id="screen-summary" class="screen"></section>
+      </main>
+    </div>
+    <div class="footer-note">Live edition: answers auto-save in this browser and submit to Google Sheet through Apps Script.</div>
+  </div>
+
+  <div class="toast" id="toast">Saved!</div>
+  <div class="modal-backdrop" id="dashboardModal">
+    <div class="modal pixel-card">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div>
+          <h2>Admin Dashboard Mockup</h2>
+          <p class="subtitle">ตัวอย่างหน้าสรุปสำหรับ preceptor/admin จากข้อมูล demo + current response</p>
+        </div>
+        <button onclick="closeDashboard()">Close</button>
+      </div>
+      <div id="dashboardContent"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "pharmacy_clerkship_quest_v1";
+    const SESSION_KEY = "guildToken";
+    let sessionToken = "";
+    let currentUser = null;
+    let audioContext = null;
+    let musicTimer = null;
+    let musicStep = 0;
+    let musicEnabled = false;
+
+    const stages = [
+      {id:0, key:"start", icon:"🏁", name:"Start Gate", sub:"Welcome"},
+      {id:1, key:"character", icon:"🧑‍⚕️", name:"Character Select", sub:"Choose your player"},
+      {id:2, key:"tutorial", icon:"📘", name:"Tutorial Lobby", sub:"First feeling"},
+      {id:3, key:"road", icon:"🛣️", name:"Clerkship Road", sub:"Mission journey"},
+      {id:4, key:"preceptor", icon:"🧙", name:"Preceptor Tower", sub:"Support & feedback"},
+      {id:5, key:"department", icon:"🏥", name:"Pharmacy City", sub:"Department vibe"},
+      {id:6, key:"skill", icon:"⚒️", name:"Skill Forge", sub:"Unlocked skills"},
+      {id:7, key:"boss", icon:"🐉", name:"Boss Fight Room", sub:"Hardest challenge"},
+      {id:8, key:"treasure", icon:"💎", name:"Treasure Room", sub:"Meaning & final score"},
+      {id:9, key:"patch", icon:"📌", name:"Patch Note Board", sub:"Improve next version"}
+    ];
+
+    const options = {
+      characters:[
+        ["curious","📝","The Curious Apprentice","สายถามเยอะ อยากเข้าใจ"],
+        ["observer","👓","The Quiet Observer","สายเงียบ แต่เก็บข้อมูลละเอียด"],
+        ["counselor","💬","The Brave Counselor","สายกล้าคุยกับผู้ป่วย"],
+        ["detective","🔎","The Order Detective","สายวิเคราะห์ order / chart"],
+        ["survival","☕","The Survival Intern","สายเหนื่อยแต่สู้"],
+        ["future","⭐","The Future Pharmacist","สายเริ่มมั่นใจขึ้น"]
+      ],
+      gameGenre:["Adventure","Survival","Puzzle","Simulator","Co-op","Horror นิด ๆ","Open world"],
+      firstFeeling:[
+        ["tutorial","📘","Tutorial Stage","ยังงง แต่มีคนสอน"],
+        ["firstBoss","😵","First Boss","เริ่มเจองานจริงแล้วตกใจ"],
+        ["openWorld","🗺️","Open World","งานเยอะ ไม่รู้เริ่มตรงไหน"],
+        ["safeZone","🛟","Safe Zone","มีคนช่วย มีพื้นที่ให้ถาม"],
+        ["hiddenQuest","✨","Hidden Quest","ได้เรียนรู้อะไรที่ไม่เคยคิดมาก่อน"]
+      ],
+      missions:["Dispensing / IPD workflow","Medication reconciliation","Patient counseling","Ward round / case discussion","Drug information","Communication with staff","Time management","Using hospital system"],
+      preceptorRoles:[
+        ["guide","🧭","Guide NPC","คอยบอกทาง"],
+        ["healer","💚","Healer","ช่วยลดความเครียด"],
+        ["tank","🛡️","Tank","คอยกันปัญหาให้"],
+        ["mage","📚","Mage","ให้ความรู้เยอะมาก"],
+        ["quest","📜","Quest Giver","ให้งานและ challenge"],
+        ["boss","🔥","Final Boss บางวัน","กดดันแต่ได้เรียนรู้"]
+      ],
+      cityTypes:[
+        ["big","🏙️","Complex Big City","ระบบซับซ้อน แต่มีอะไรให้เรียนเยอะ"],
+        ["warm","🏡","Warm Safe Town","อบอุ่น มีคนช่วยเหลือ"],
+        ["busy","🏃","Busy Expert City","วิ่งวุ่นมาก แต่ทุกคนเก่ง"],
+        ["hidden","🧩","Hidden Knowledge City","มี hidden knowledge เยอะ"],
+        ["hard","🚪","Hard to Enter","เข้ายากตอนแรก แต่พออยู่ไปเริ่มเข้าใจ"]
+      ],
+      welcome:["มีคนทัก/แนะนำตัว","มีคนอธิบาย workflow","มีพื้นที่ให้ถาม","ได้ลองทำงานจริง","staff ไม่ดุเกินไป","มี feedback ที่ดี","มี buddy หรือพี่ช่วยดู"],
+      stress:["งานเยอะ/เร็ว","กลัวตอบผิด","ไม่รู้ว่าต้องทำอะไรต่อ","ไม่กล้าถาม","ระบบงานซับซ้อน","feedback ไม่ชัด","บรรยากาศกดดัน","กลัวรบกวน staff"],
+      skills:["Patient Counseling","Order Review","Clinical Thinking","Team Communication","Time Management","Confidence","Drug Information","Workflow Understanding"],
+      bosses:[
+        ["mistake","👾","Fear of Mistake Monster","กลัวผิด กลัวตอบพลาด"],
+        ["task","🐲","Too Many Tasks Dragon","งานเยอะและเร็ว"],
+        ["silent","👻","Silent Room Ghost","บรรยากาศเงียบ ไม่กล้าถาม"],
+        ["workflow","🗿","Complex Workflow Golem","workflow ซับซ้อน"],
+        ["feedback","🫧","Feedback Confusion Slime","ไม่แน่ใจว่าเราทำดีไหม"],
+        ["time","⏰","Time Pressure Boss","เวลาบีบและต้องรีบ"]
+      ],
+      emoji:[
+        ["fun","😄","สนุกและได้เรียนรู้"],
+        ["worth","🙂","เหนื่อยแต่คุ้ม"],
+        ["survive","😵‍💫","หนักมาก แต่รอด"],
+        ["proud","🥹","ภูมิใจในตัวเอง"],
+        ["improve","🤔","ยังมีบางอย่างอยากให้ดีขึ้น"]
+      ],
+      patches:["Orientation ให้ชัดขึ้น","Checklist งานแต่ละวัน","ตารางกิจกรรม/เป้าหมายรายสัปดาห์","เพิ่ม feedback ระหว่างทาง","ลดงานซ้ำที่ไม่เกิดการเรียนรู้","เพิ่ม case discussion","เพิ่ม patient counseling practice","เพิ่ม buddy system","มีตัวอย่างงานที่คาดหวัง"]
+    };
+
+    let state = {
+      currentStage:0,
+      profile:{anonymous:false,nickname:"",university:"",rotation:"",period:"",character:"",characterLabel:""},
+      answers:{
+        character:{why:""},
+        tutorial:{gameTitle:"",gameGenre:"",firstFeeling:"",firstFeelingLabel:"",firstHelp:""},
+        road:{hardestMission:[],growthMission:"",growthReason:""},
+        preceptor:{role:"",roleLabel:"",ratings:{teachingClarity:0,comfortToAsk:0,helpfulFeedback:0,workload:0,notLeftAlone:0},wantedSkill:"",bestWorstReason:""},
+        department:{cityType:"",cityLabel:"",welcomeFactors:[],stressFactors:[],oneThingToFix:"",memorableMoment:""},
+        skill:{unlockedSkills:[],proudestSkill:"",skillToImprove:""},
+        boss:{hardestBoss:"",bossLabel:"",howSurvived:"",whatWouldHelp:""},
+        treasure:{treasure:"",oneWord:"",finalEmoji:"",finalEmojiLabel:"",overallScore:0},
+        patch:{patchRequests:[],messageToJunior:"",secretMessage:""}
+      },
+      results:{questScore:0,rank:"",endingTitle:"",endingText:""}
+    };
+
+    function load(){
+      bindLoginEnter();
+      const savedSession = localStorage.getItem(SESSION_KEY);
+      if (!savedSession || !(window.google && google.script && google.script.run)) {
+        showLogin();
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result && result.ok) enterGame(savedSession, result.user);
+          else { localStorage.removeItem(SESSION_KEY); showLogin(result && result.message); }
+        })
+        .withFailureHandler(() => { localStorage.removeItem(SESSION_KEY); showLogin('Unable to validate session.'); })
+        .validateSession(savedSession);
+    }
+
+    function bindLoginEnter(){
+      ['loginUsername','loginPassword'].forEach(id => {
+        const el=document.getElementById(id);
+        if(el) el.addEventListener('keydown', e => { if(e.key==='Enter') login(); });
+      });
+    }
+
+    function showLogin(message=''){
+      document.getElementById('authScreen').style.display='flex';
+      document.getElementById('gameApp').classList.add('hidden');
+      document.getElementById('authError').textContent=message || '';
+      setTimeout(()=>document.getElementById('loginUsername').focus(),100);
+    }
+
+    function login(){
+      const username=document.getElementById('loginUsername').value.trim();
+      const password=document.getElementById('loginPassword').value;
+      const btn=document.getElementById('loginButton');
+      document.getElementById('authError').textContent='';
+      btn.disabled=true; btn.textContent='Checking...';
+      google.script.run
+        .withSuccessHandler(result => {
+          btn.disabled=false; btn.textContent='Start Recape';
+          if(!result || !result.ok){ document.getElementById('authError').textContent=(result&&result.message)||'Login failed'; return; }
+          localStorage.setItem(SESSION_KEY,result.token);
+          enterGame(result.token,result.user);
+        })
+        .withFailureHandler(error => {
+          btn.disabled=false; btn.textContent='Start Recape';
+          document.getElementById('authError').textContent=(error&&error.message)||'Login failed';
+        })
+        .loginUser(username,password);
+    }
+
+    function enterGame(token,user){
+      sessionToken=token; currentUser=user;
+      document.getElementById('authScreen').style.display='none';
+      document.getElementById('gameApp').classList.remove('hidden');
+      document.getElementById('loggedUserChip').textContent=`👤 ${user.displayName} • ${user.rotation || user.role}`;
+      const analyticsButton=document.getElementById('analyticsButton');
+      if(analyticsButton) analyticsButton.classList.toggle('hidden', user.role!=='admin');
+      const saved = localStorage.getItem(STORAGE_KEY + ':' + user.id);
+      if(saved){ try{ state=JSON.parse(saved); }catch(e){} }
+      state.profile.anonymous=false;
+      state.profile.nickname=user.displayName;
+      state.profile.university=user.university || '';
+      state.profile.rotation=user.rotation || '';
+      renderMap(); renderScreen(); updateProgress(); syncProfileUI();
+    }
+
+    function openAnalytics(){
+      const dashboardUrl = '<?!= webAppUrl ?>?page=dashboard';
+      window.open(dashboardUrl, '_blank', 'noopener');
+    }
+
+    function logout(){
+      const token=sessionToken;
+      sessionToken=''; currentUser=null;
+      localStorage.removeItem(SESSION_KEY);
+      if(window.google&&google.script&&google.script.run) google.script.run.logoutUser(token);
+      location.reload();
+    }
+
+    function save(silent=false){
+      const key = currentUser ? STORAGE_KEY + ":" + currentUser.id : STORAGE_KEY;
+      localStorage.setItem(key, JSON.stringify(state));
+      updateProgress();
+      renderMap();
+      updateSidebar();
+      if(!silent) showToast("Saved");
+    }
+
+    function showToast(text){
+      const t=document.getElementById("toast");
+      t.textContent=text;
+      t.style.display="block";
+      clearTimeout(window.__toast);
+      window.__toast=setTimeout(()=>t.style.display="none",900);
+    }
+
+    function renderMap(){
+      const map = document.getElementById("map");
+      map.innerHTML = stages.map(s=>{
+        const active = state.currentStage===s.id ? "active" : "";
+        const done = state.currentStage>s.id ? "done" : "";
+        return `<div class="map-node ${active} ${done}" onclick="goToStage(${s.id})">
+          <div class="node-icon">${s.icon}</div>
+          <div><div class="node-name">${s.name}</div><div class="node-sub">${s.sub}</div></div>
+        </div>`;
+      }).join("");
+    }
+
+
+    function startQuest(){
+      if(!musicEnabled) startMusic();
+      goToStage(1);
+    }
+
+    function toggleMusic(){
+      if(musicEnabled) stopMusic(); else startMusic();
+    }
+
+    function startMusic(){
+      try{
+        audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+        if(audioContext.state === 'suspended') audioContext.resume();
+        musicEnabled = true;
+        const notes=[261.63,329.63,392.00,523.25,392.00,349.23,329.63,293.66,261.63,329.63,440.00,392.00];
+        const play=()=>{
+          if(!musicEnabled || !audioContext) return;
+          const osc=audioContext.createOscillator();
+          const gain=audioContext.createGain();
+          osc.type='square';
+          osc.frequency.value=notes[musicStep % notes.length];
+          gain.gain.setValueAtTime(0.0001,audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.035,audioContext.currentTime+0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001,audioContext.currentTime+0.16);
+          osc.connect(gain); gain.connect(audioContext.destination);
+          osc.start(); osc.stop(audioContext.currentTime+0.18);
+          musicStep++;
+        };
+        play();
+        clearInterval(musicTimer);
+        musicTimer=setInterval(play,230);
+        updateMusicButton();
+      }catch(e){ showToast('Music is not supported in this browser'); }
+    }
+
+    function stopMusic(){
+      musicEnabled=false;
+      clearInterval(musicTimer); musicTimer=null;
+      updateMusicButton();
+    }
+
+    function updateMusicButton(){
+      const b=document.getElementById('musicButton');
+      if(b) b.innerHTML=musicEnabled ? '<span class="music-note">♫</span> Music: ON' : '♫ Music: OFF';
+    }
+
+    function goToStage(id){
+      state.currentStage = id;
+      save(true);
+      renderScreen();
+      renderMap();
+      updateProgress();
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+
+    function showScreen(name){
+      document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
+      document.getElementById(name).classList.add("active");
+    }
+
+    function renderScreen(){
+      if(state.currentStage===0){
+        showScreen("screen-start");
+        syncProfileUI();
+      } else if(state.currentStage===10){
+        renderSummary();
+        showScreen("screen-summary");
+      } else {
+        showScreen("screen-stage");
+        renderStage(state.currentStage);
+      }
+      updateSidebar();
+    }
+
+    function updateProgress(){
+      const pct = Math.min(100, Math.round((Math.min(state.currentStage,9)/9)*100));
+      document.getElementById("progressBar").style.width = pct + "%";
+      document.getElementById("stageText").textContent = state.currentStage >= 10 ? 'End Credits' : `Stage ${Math.min(state.currentStage,9)} / 9`;
+      document.getElementById("pctText").textContent = pct + "%";
+    }
+
+    function updateSidebar(){
+      const p = state.profile;
+      document.getElementById("sideName").textContent = p.nickname || "Student";
+      document.getElementById("sideCharacter").textContent = p.characterLabel || "No character selected";
+    }
+
+    function syncProfileUI(){
+      if(!currentUser) return;
+      const text=document.getElementById('registeredPlayerText');
+      if(text) text.innerHTML=`<b>${currentUser.displayName}</b><br>${currentUser.university || '-'} • ${currentUser.rotation || '-'}`;
+      state.profile.anonymous=false;
+      state.profile.nickname=currentUser.displayName;
+      state.profile.university=currentUser.university || '';
+      state.profile.rotation=currentUser.rotation || '';
+    }
+
+    function saveProfile(){ save(true); }
+
+    function choiceCards(list, selected, handler, color=""){
+      return `<div class="grid">` + list.map(item=>{
+        const [val, emoji, title, sub] = item;
+        const sel = selected===val ? "selected" : "";
+        return `<div class="choice ${color} ${sel}" onclick="${handler}('${escapeJS(val)}','${escapeJS(title)}')">
+          <span class="emoji">${emoji}</span><div>${title}<small>${sub||""}</small></div>
+        </div>`;
+      }).join("") + `</div>`;
+    }
+
+    function simpleCards(list, selected, handler, color=""){
+      return `<div class="grid">` + list.map(val=>{
+        const sel = selected===val ? "selected" : "";
+        return `<div class="choice ${color} ${sel}" onclick="${handler}('${escapeJS(val)}')"><span class="emoji">▣</span><div>${val}</div></div>`;
+      }).join("") + `</div>`;
+    }
+
+    function multiCards(list, selectedArr, handler, color=""){
+      return `<div class="grid">` + list.map(val=>{
+        const sel = selectedArr.includes(val) ? "selected" : "";
+        return `<div class="choice ${color} ${sel}" onclick="${handler}('${escapeJS(val)}')"><span class="emoji">${sel?'✅':'⬜'}</span><div>${val}</div></div>`;
+      }).join("") + `</div>`;
+    }
+
+    function escapeJS(s){ return String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;"); }
+
+    function setProfileCharacter(val,label){
+      state.profile.character = val;
+      state.profile.characterLabel = label;
+      save();
+      renderStage(1);
+    }
+    function setStageVal(stage,key,val,labelKey,label){
+      state.answers[stage][key]=val;
+      if(labelKey) state.answers[stage][labelKey]=label;
+      save();
+      renderStage(state.currentStage);
+    }
+    function toggleArray(stage,key,val){
+      const arr = state.answers[stage][key];
+      const i = arr.indexOf(val);
+      if(i>=0) arr.splice(i,1); else arr.push(val);
+      save();
+      renderStage(state.currentStage);
+    }
+    function inputVal(stage,key,el){
+      state.answers[stage][key] = el.value;
+      save(true);
+    }
+    function inputRating(key,val){
+      state.answers.preceptor.ratings[key]=val;
+      save(true);
+      renderStage(4);
+    }
+
+    function ratingRow(key,label){
+      const val = state.answers.preceptor.ratings[key] || 0;
+      return `<div class="rating-row">
+        <b>${label}</b>
+        <div class="hearts">${[1,2,3,4,5].map(n=>`<span class="heart ${n<=val?'on':''}" onclick="inputRating('${key}',${n})">💛</span>`).join("")}</div>
+      </div>`;
+    }
+
+    function stageHeader(s){
+      return `<div class="section-title"><div class="stage-icon">${s.icon}</div><div><h2>${s.name}</h2><p class="subtitle">${s.sub}</p></div></div>`;
+    }
+
+    function renderStage(id){
+      const s = stages.find(x=>x.id===id);
+      const el = document.getElementById("screen-stage");
+      let body = stageHeader(s);
+
+      if(id===1){
+        body += `<div class="question-card"><div class="q-title">1) Choose your character / เลือกตัวละครแทนตัวเอง</div>
+        <div class="q-hint">ไม่ต้องคิดเยอะ เลือกตัวที่ตรง feeling ตอนฝึกงานที่สุด</div>
+        ${choiceCards(options.characters,state.profile.character,"setProfileCharacter","yellow")}
+        </div>
+        <div class="question-card"><div class="q-title">Why this character?</div>
+        <textarea oninput="inputVal('character','why',this)" placeholder="ทำไมถึงเลือกตัวละครนี้?">${state.answers.character.why||""}</textarea></div>`;
+      }
+
+      if(id===2){
+        const a=state.answers.tutorial;
+        body += `<div class="question-card"><div class="q-title">2) ถ้า clerkship ครั้งนี้เป็นเกม 1 เกม คุณให้ชื่อเกมว่าอะไร?</div>
+          <input type="text" value="${a.gameTitle||""}" oninput="inputVal('tutorial','gameTitle',this)" placeholder="Example: Survival in Pharmacy City">
+        </div>
+        <div class="question-card"><div class="q-title">3) Game genre / แนวเกม</div>${simpleCards(options.gameGenre,a.gameGenre,"v=>{}")}</div>`;
+        body = body.replace(/onclick="v=&gt;\{\}\('([^']+)'\)"/g, `onclick="setStageVal('tutorial','gameGenre','$1')"`);
+        body += `<div class="question-card"><div class="q-title">4) ช่วงแรกของการฝึกงานเหมือน stage ไหน?</div>
+          ${choiceCards(options.firstFeeling,a.firstFeeling,"setFirstFeeling","blue")}
+        </div>
+        <div class="question-card"><div class="q-title">อะไรช่วยให้ผ่านช่วงแรกมาได้?</div>
+          <textarea oninput="inputVal('tutorial','firstHelp',this)" placeholder="เช่น preceptor, staff, friend, checklist, ได้ลองทำจริง...">${a.firstHelp||""}</textarea>
+        </div>`;
+      }
+
+      if(id===3){
+        const a=state.answers.road;
+        body += `<div class="question-card"><div class="q-title">5) Mission ที่ท้าทายที่สุดคืออะไร?</div>
+          ${multiCards(options.missions,a.hardestMission,"toggleRoadMission","pink")}
+        </div>
+        <div class="question-card"><div class="q-title">6) Mission ไหนที่ทำให้รู้สึกว่า “เราโตขึ้น”?</div>
+          ${simpleCards(options.missions,a.growthMission,"setGrowthMission","green")}
+        </div>
+        <div class="question-card"><div class="q-title">เล่าเพิ่มนิดหนึ่ง: why?</div>
+          <textarea oninput="inputVal('road','growthReason',this)" placeholder="เพราะอะไร mission นี้ทำให้รู้สึกพัฒนา?">${a.growthReason||""}</textarea>
+        </div>`;
+      }
+
+      if(id===4){
+        const a=state.answers.preceptor;
+        body += `<div class="question-card"><div class="q-title">7) ถ้า preceptor เป็น NPC / party member ในเกม เขา/เธอเป็นแบบไหน?</div>
+          ${choiceCards(options.preceptorRoles,a.role,"setPreceptorRole","yellow")}
+        </div>
+        <div class="question-card"><div class="q-title">8) Preceptor support rating</div>
+          ${ratingRow("teachingClarity","Clarity of teaching / ความชัดเจนในการสอน")}
+          ${ratingRow("comfortToAsk","Comfort to ask / ความสบายใจในการถาม")}
+          ${ratingRow("helpfulFeedback","Helpful feedback / feedback ที่ช่วยพัฒนา")}
+          ${ratingRow("workload","Appropriate workload / workload เหมาะสม")}
+          ${ratingRow("notLeftAlone","Not feeling left alone / ไม่รู้สึกว่าถูกทิ้งไว้คนเดียว")}
+        </div>
+        <div class="question-card"><div class="q-title">9) อยากให้ preceptor เพิ่ม skill อะไรอีก?</div>
+          <textarea oninput="inputVal('preceptor','wantedSkill',this)" placeholder="เช่น feedback ชัดขึ้น, อธิบายเป้าหมายแต่ละวัน, มีตัวอย่างให้ดู...">${a.wantedSkill||""}</textarea>
+        </div>
+        <div class="question-card"><div class="q-title">คะแนนไหนสูงสุด/ต่ำสุด เพราะอะไร?</div>
+          <textarea oninput="inputVal('preceptor','bestWorstReason',this)" placeholder="เล่าได้สบาย ๆ ไม่ใช่การประเมินแบบเป็นทางการ">${a.bestWorstReason||""}</textarea>
+        </div>`;
+      }
+
+      if(id===5){
+        const a=state.answers.department;
+        body += `<div class="question-card"><div class="q-title">10) ถ้าแผนกเภสัชกรรมเป็นเมืองในเกม เมืองนี้เป็นแบบไหน?</div>
+          ${choiceCards(options.cityTypes,a.cityType,"setCityType","blue")}
+        </div>
+        <div class="question-card"><div class="q-title">11) สิ่งที่ทำให้รู้สึก welcome คืออะไร?</div>
+          ${multiCards(options.welcome,a.welcomeFactors,"toggleWelcome","green")}
+        </div>
+        <div class="question-card"><div class="q-title">12) สิ่งที่ทำให้ stress หรือไม่มั่นใจคืออะไร?</div>
+          ${multiCards(options.stress,a.stressFactors,"toggleStress","pink")}
+        </div>
+        <div class="question-card"><div class="q-title">มี moment ไหนที่จำได้ไหม?</div>
+          <textarea oninput="inputVal('department','memorableMoment',this)" placeholder="เช่น มีพี่ช่วยตอนงง workflow, ได้ counseling ครั้งแรก...">${a.memorableMoment||""}</textarea>
+        </div>
+        <div class="question-card"><div class="q-title">ถ้าแก้ได้ 1 อย่าง อยากให้แก้อะไร?</div>
+          <textarea oninput="inputVal('department','oneThingToFix',this)" placeholder="One thing to fix...">${a.oneThingToFix||""}</textarea>
+        </div>`;
+      }
+
+      if(id===6){
+        const a=state.answers.skill;
+        body += `<div class="question-card"><div class="q-title">13) หลังจบ clerkship คุณ unlock skill อะไรบ้าง?</div>
+          ${multiCards(options.skills,a.unlockedSkills,"toggleSkill","yellow")}
+        </div>
+        <div class="question-card"><div class="q-title">14) Skill ไหนที่ภูมิใจที่สุด?</div>
+          ${simpleCards(options.skills,a.proudestSkill,"setProudestSkill","green")}
+        </div>
+        <div class="question-card"><div class="q-title">15) Skill ที่ยังอยากฝึกต่อคืออะไร?</div>
+          <textarea oninput="inputVal('skill','skillToImprove',this)" placeholder="อยากพัฒนาต่อเรื่องอะไร?">${a.skillToImprove||""}</textarea>
+        </div>`;
+      }
+
+      if(id===7){
+        const a=state.answers.boss;
+        body += `<div class="question-card"><div class="q-title">16) Boss fight ที่ยากที่สุดของการฝึกงานคืออะไร?</div>
+          ${choiceCards(options.bosses,a.hardestBoss,"setBoss","pink")}
+        </div>
+        <div class="question-card"><div class="q-title">17) ตอนนั้นผ่านมันมาได้อย่างไร?</div>
+          <textarea oninput="inputVal('boss','howSurvived',this)" placeholder="ผ่าน boss fight นี้มาได้ยังไง?">${a.howSurvived||""}</textarea>
+        </div>
+        <div class="question-card"><div class="q-title">18) อะไรจะช่วยให้ boss fight นี้ง่ายขึ้น?</div>
+          <textarea oninput="inputVal('boss','whatWouldHelp',this)" placeholder="เช่น checklist, feedback, buddy, orientation...">${a.whatWouldHelp||""}</textarea>
+        </div>`;
+      }
+
+      if(id===8){
+        const a=state.answers.treasure;
+        body += `<div class="question-card"><div class="q-title">19) Treasure ที่ได้จากการฝึกงานครั้งนี้คืออะไร?</div>
+          <textarea oninput="inputVal('treasure','treasure',this)" placeholder="ความรู้ ประสบการณ์ ความมั่นใจ หรือมุมมองใหม่">${a.treasure||""}</textarea>
+        </div>
+        <div class="question-card"><div class="q-title">20) ถ้ามีคำหนึ่งคำแทน clerkship ครั้งนี้ คำนั้นคืออะไร?</div>
+          <input type="text" value="${a.oneWord||""}" oninput="inputVal('treasure','oneWord',this)" placeholder="One word">
+        </div>
+        <div class="question-card"><div class="q-title">21) Emoji แทนความรู้สึกหลังจบ clerkship</div>
+          ${choiceCards(options.emoji,a.finalEmoji,"setFinalEmoji","yellow")}
+        </div>
+        <div class="question-card"><div class="q-title">22) Overall experience score</div>
+          <input type="number" min="0" max="10" value="${a.overallScore||""}" oninput="inputVal('treasure','overallScore',this)" placeholder="0-10">
+        </div>`;
+      }
+
+      if(id===9){
+        const a=state.answers.patch;
+        body += `<div class="question-card"><div class="q-title">23) ถ้าแผนกจะ update version ใหม่ ควร patch อะไร?</div>
+          ${multiCards(options.patches,a.patchRequests,"togglePatch","blue")}
+        </div>
+        <div class="question-card"><div class="q-title">24) Message ถึงรุ่นน้องที่จะมาฝึกที่นี่</div>
+          <textarea oninput="inputVal('patch','messageToJunior',this)" placeholder="ถ้าจะ survive clerkship ที่นี่ ต้อง...">${a.messageToJunior||""}</textarea>
+        </div>
+        <div class="question-card"><div class="q-title">25) Secret message to preceptor / department</div>
+          <div class="q-hint">มีอะไรที่อยากบอก แต่ปกติไม่กล้าบอกไหม?</div>
+          <textarea oninput="inputVal('patch','secretMessage',this)" placeholder="ตอบได้อิสระ">${a.secretMessage||""}</textarea>
+        </div>`;
+      }
+
+      body += navButtons(id);
+      el.innerHTML = body;
+    }
+
+    function navButtons(id){
+      const prev = id>0 ? id-1 : 0;
+      const next = id<9 ? id+1 : 10;
+      return `<div class="nav-actions">
+        <button class="secondary" onclick="goToStage(${prev})">← Back</button>
+        <button class="${id===9?'green':'blue'}" onclick="${id===9?'goToSummary()':'goToStage('+next+')'}">${id===9?'View Summary / Submit Adventure Recape':'Next Stage →'}</button>
+      </div>`;
+    }
+
+    function setFirstFeeling(val,label){ setStageVal("tutorial","firstFeeling",val,"firstFeelingLabel",label); }
+    function toggleRoadMission(val){ toggleArray("road","hardestMission",val); }
+    function setGrowthMission(val){ setStageVal("road","growthMission",val); }
+    function setPreceptorRole(val,label){ setStageVal("preceptor","role",val,"roleLabel",label); }
+    function setCityType(val,label){ setStageVal("department","cityType",val,"cityLabel",label); }
+    function toggleWelcome(val){ toggleArray("department","welcomeFactors",val); }
+    function toggleStress(val){ toggleArray("department","stressFactors",val); }
+    function toggleSkill(val){ toggleArray("skill","unlockedSkills",val); }
+    function setProudestSkill(val){ setStageVal("skill","proudestSkill",val); }
+    function setBoss(val,label){ setStageVal("boss","hardestBoss",val,"bossLabel",label); }
+    function setFinalEmoji(val,label){ setStageVal("treasure","finalEmoji",val,"finalEmojiLabel",label); }
+    function togglePatch(val){ toggleArray("patch","patchRequests",val); }
+
+    function goToSummary(){
+      state.currentStage = 10;
+      save(true);
+      renderSummary();
+      showScreen("screen-summary");
+      renderMap();
+      updateProgress();
+    }
+
+
+    function calculateQuestResult(){
+      const a=state.answers;
+      const ratings=Object.values(a.preceptor.ratings||{}).map(Number).filter(v=>v>0);
+      const preAvg=ratings.length ? ratings.reduce((x,y)=>x+y,0)/ratings.length : 0;
+      const overall=Math.max(0,Math.min(10,Number(a.treasure.overallScore)||0));
+      const skillCount=Math.min(8,(a.skill.unlockedSkills||[]).length);
+      const welcomeCount=Math.min(7,(a.department.welcomeFactors||[]).length);
+      const reflections=[a.character.why,a.tutorial.firstHelp,a.road.growthReason,a.preceptor.bestWorstReason,a.department.memorableMoment,a.boss.howSurvived,a.treasure.treasure];
+      const reflectionPoints=reflections.filter(x=>String(x||'').trim().length>2).length;
+      const score=Math.round(overall*3 + (preAvg/5)*25 + skillCount*3 + welcomeCount*2 + reflectionPoints);
+      const finalScore=Math.max(1,Math.min(100,score));
+      let rank='Brave Completer';
+      if(finalScore>=85) rank='Legendary Clerkship Hero';
+      else if(finalScore>=70) rank='Heroic Pharmacist in Training';
+      else if(finalScore>=55) rank='Rising Pharmacy Adventurer';
+
+      const endings={
+        curious:['The Endless Library Ending','คุณเปิดประตูห้องสมุดลับและพบว่า ทุกคำถามที่เคยถามได้กลายเป็นแผนที่นำทางให้รุ่นต่อไป คุณยังคงออกเดินทางด้วยความอยากรู้ และทุกคนยินดีตอบคำถามของคุณ'],
+        observer:['The Quiet Guardian Ending','รายละเอียดเล็ก ๆ ที่คุณสังเกตเห็นได้ช่วยให้ Pharmacy City ปลอดภัยขึ้น คุณไม่ได้พูดดังที่สุด แต่สิ่งที่คุณมองเห็นมีคุณค่าเสมอ'],
+        counselor:['The Voice of Hope Ending','คำพูดที่ชัดเจนและอ่อนโยนของคุณกลายเป็นพลังรักษา ผู้ป่วยออกจากเมืองพร้อมความเข้าใจ และคุณก้าวต่อไปในฐานะผู้สื่อสารแห่งความหวัง'],
+        detective:['The Golden Prescription Ending','คุณไขปริศนา order ที่ซับซ้อนและพบ Golden Prescription ซึ่งไม่ได้มอบคำตอบทุกอย่าง แต่มอบทักษะให้คุณค้นหาคำตอบอย่างปลอดภัย'],
+        survival:['The Unbreakable Campfire Ending','หลังผ่านวันที่เหนื่อยที่สุด คุณจุดกองไฟกลาง Pharmacy City ทุกคนมารวมตัว แบ่งปันเรื่องราว และยืนยันว่า การขอความช่วยเหลือคือหนึ่งใน skill ที่แข็งแกร่งที่สุด'],
+        future:['The New White Coat Ending','ประตูโรงพยาบาลเปิดรับแสงเช้าวันใหม่ คุณเห็นตัวเองในเสื้อกาวน์ของอนาคต ไม่ใช่คนที่รู้ทุกอย่าง แต่เป็นเภสัชกรที่พร้อมเรียนรู้และดูแลผู้คน'],
+      };
+      const selected=endings[state.profile.character] || ['The Shared Journey Ending','คุณเดินทางจนจบด้วยเรื่องราวเฉพาะของตัวเอง ทุกคำตอบได้กลายเป็น treasure ที่ช่วยให้ clerkship รุ่นต่อไปอบอุ่นและดีขึ้น'];
+      state.results={questScore:finalScore,rank:rank,endingTitle:selected[0],endingText:selected[1]};
+      save(true);
+      return state.results;
+    }
+
+    function renderSummary(){
+      const el=document.getElementById("screen-summary");
+      const a=state.answers;
+      const avg = avgPreceptor();
+      const result = calculateQuestResult();
+      el.innerHTML = `<div class="section-title"><div class="stage-icon">🏆</div><div><h2>Quest Summary</h2><p class="subtitle">ตรวจคำตอบก่อน export หรือส่งให้ preceptor/admin</p></div></div>
+      <div class="summary-grid">
+        <div class="summary-card"><h3>Player</h3>
+          <p><b>${state.profile.nickname || "Student"}</b></p>
+          <p>${state.profile.characterLabel || "-"}</p>
+          <p>${state.profile.university || ""} ${state.profile.rotation || ""}</p>
+        </div>
+        <div class="summary-card"><h3>First Feeling</h3>
+          <p><b>${a.tutorial.firstFeelingLabel || "-"}</b></p>
+          <p>Game: ${a.tutorial.gameTitle || "-"} (${a.tutorial.gameGenre || "-"})</p>
+        </div>
+        <div class="summary-card"><h3>Preceptor Support</h3>
+          <p><b>${avg}/5 hearts</b></p>
+          <p>${a.preceptor.roleLabel || "-"}</p>
+        </div>
+        <div class="summary-card"><h3>Department</h3>
+          <p><b>${a.department.cityLabel || "-"}</b></p>
+          <p>Stress: ${(a.department.stressFactors||[]).slice(0,3).join(", ") || "-"}</p>
+        </div>
+        <div class="summary-card"><h3>Unlocked Skills</h3>
+          <p>${(a.skill.unlockedSkills||[]).map(x=>`<span class="pill">${x}</span>`).join("") || "-"}</p>
+        </div>
+        <div class="summary-card"><h3>Final</h3>
+          <p>Experience: <b>${a.treasure.overallScore || "-"}/10</b></p>
+          <p>Emoji: ${a.treasure.finalEmojiLabel || "-"}</p>
+          <p>One word: <b>${a.treasure.oneWord || "-"}</b></p>
+        </div>
+        <div class="summary-card"><h3>Calculated Quest Result</h3>
+          <p class="score-number">${result.questScore}/100</p>
+          <p><b>${result.rank}</b></p>
+          <small>คะแนนนี้ใช้สร้างตอนจบของเกม ไม่ใช่คะแนนประเมินนักศึกษา</small>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="secondary" onclick="goToStage(9)">← Back to Patch Note</button>
+        <div>
+          <button class="blue" onclick="exportJSON()">Export JSON</button>
+          <button class="green" onclick="submitQuest()">Submit Adventure Recape</button>
+        </div>
+      </div>`;
+    }
+
+    function avgPreceptor(){
+      const r = state.answers.preceptor.ratings;
+      const vals = Object.values(r).map(Number).filter(x=>x>0);
+      if(!vals.length) return "-";
+      return (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+    }
+
+    function submitQuest(){
+      const submitButtons = [...document.querySelectorAll('button')]
+        .filter(b => b.textContent.includes('Submit Adventure Recape'));
+      submitButtons.forEach(b => {
+        b.disabled = true;
+        b.dataset.oldText = b.textContent;
+        b.textContent = 'Saving...';
+      });
+
+      const payload = {
+        action: 'submitResponse',
+        app: 'Adventure Recape',
+        version: 'adventure-recape-v1',
+        sessionToken: sessionToken,
+        submittedAtClient: new Date().toISOString(),
+        response: state
+      };
+
+      if (!(window.google && google.script && google.script.run)) {
+        submitButtons.forEach(b => {
+          b.disabled = false;
+          b.textContent = b.dataset.oldText || 'Submit Adventure Recape';
+        });
+        showSubmitResult(false, 'Open from Apps Script link',
+          'This page must be opened from the deployed Google Apps Script web-app URL.');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(result => {
+          submitButtons.forEach(b => {
+            b.disabled = false;
+            b.textContent = b.dataset.oldText || 'Submit Adventure Recape';
+          });
+
+          if (!result || result.ok !== true) {
+            showSubmitResult(false, 'Submit failed',
+              (result && result.message) || 'Google Sheet did not confirm the response.');
+            return;
+          }
+
+          const history = JSON.parse(localStorage.getItem(STORAGE_KEY + '_history') || '[]');
+          history.push({
+            ...state,
+            submittedAt: new Date().toISOString(),
+            remoteStatus: 'saved',
+            responseId: result.responseId || ''
+          });
+          localStorage.setItem(STORAGE_KEY + '_history', JSON.stringify(history));
+
+          renderEndCredits(result.responseId || '', result.row || '');
+        })
+        .withFailureHandler(error => {
+          submitButtons.forEach(b => {
+            b.disabled = false;
+            b.textContent = b.dataset.oldText || 'Submit Adventure Recape';
+          });
+          console.error(error);
+          showSubmitResult(false, 'Submit failed',
+            (error && error.message) || 'Please check the Apps Script deployment and Google Sheet permission.');
+        })
+        .saveQuestResponse(payload);
+    }
+
+
+    function renderEndCredits(responseId,row){
+      const r=calculateQuestResult();
+      const a=state.answers;
+      state.currentStage=10;
+      updateProgress();
+      renderMap();
+      showScreen('screen-summary');
+      const el=document.getElementById('screen-summary');
+      el.innerHTML=`<div class="ending-shell">
+        <div class="section-title"><div class="stage-icon">🎬</div><div><h2>End Credits</h2><p class="subtitle" style="color:#dce3ff">Your clerkship story has been safely saved.</p></div></div>
+        <div class="ending-score">
+          <div class="score-tile"><div class="score-number">${r.questScore}</div><b>Quest Score / 100</b></div>
+          <div class="score-tile"><div style="font-size:24px">🏅</div><b>${r.rank}</b></div>
+          <div class="score-tile"><div style="font-size:24px">${a.treasure.finalEmojiLabel || '🌟'}</div><b>${a.treasure.oneWord || 'Completed'}</b></div>
+        </div>
+        <div class="credits-viewport">
+          <div class="credits-stars"></div>
+          <div class="credits-roll">
+            <span class="ending-icon">${characterIcon()}</span>
+            <h2>${r.endingTitle}</h2>
+            <p>${r.endingText}</p>
+            <h3>PLAYER</h3>
+            <p>${escapeHtml(state.profile.nickname || 'Student')}<br>${escapeHtml(state.profile.university || '')} • ${escapeHtml(state.profile.rotation || '')}</p>
+            <h3>CHOSEN CHARACTER</h3>
+            <p>${escapeHtml(state.profile.characterLabel || '-')}</p>
+            <h3>UNLOCKED SKILLS</h3>
+            <p>${(a.skill.unlockedSkills||[]).map(escapeHtml).join(' • ') || 'Reflection & Courage'}</p>
+            <h3>TREASURE FOUND</h3>
+            <p>${escapeHtml(a.treasure.treasure || 'A new experience')}</p>
+            <h3>SPECIAL THANKS</h3>
+            <p>Students • Preceptors • Pharmacy Department<br>and every patient who helped us learn</p>
+            <h2>THE QUEST CONTINUES...</h2>
+            <p>ขอให้เส้นทางเภสัชกรของคุณเต็มไปด้วยความกล้า ความเมตตา และการเรียนรู้</p>
+            <p class="credit-small">Saved to Google Sheet<br>Response ID: ${escapeHtml(responseId)} • Row: ${escapeHtml(String(row))}</p>
+            <h2>★ HAPPY END ★</h2>
+          </div>
+        </div>
+        <div class="credits-controls">
+          <button class="secondary" onclick="restartCredits()">↻ Replay Credits</button>
+          <button class="secondary" onclick="toggleMusic()">♫ Toggle Music</button>
+          <button class="green" onclick="resetAfterSubmit()">Start New Response</button>
+        </div>
+      </div>`;
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function restartCredits(){
+      const roll=document.querySelector('.credits-roll');
+      if(!roll) return;
+      roll.style.animation='none'; void roll.offsetHeight; roll.style.animation='creditsUp 28s linear infinite';
+    }
+
+    function characterIcon(){
+      return ({curious:'📝',observer:'👓',counselor:'💬',detective:'🔎',survival:'☕',future:'⭐'})[state.profile.character] || '🧑‍⚕️';
+    }
+
+    function escapeHtml(value){
+      return String(value==null?'':value).replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+    }
+
+    function showSubmitResult(ok, title, message){
+      const old = document.getElementById('submitResultModal');
+      if(old) old.remove();
+      const wrap = document.createElement('div');
+      wrap.id = 'submitResultModal';
+      wrap.className = 'modal-backdrop';
+      wrap.style.display = 'flex';
+      wrap.innerHTML = `<div class="modal pixel-card" style="max-width:560px;text-align:center">
+        <div style="font-size:64px">${ok ? '🏆' : '⚠️'}</div>
+        <h2>${title}</h2>
+        <p class="subtitle" style="font-size:16px">${message}</p>
+        <div style="margin-top:18px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
+          <button class="${ok ? 'green' : 'danger'}" onclick="document.getElementById('submitResultModal').remove()">OK</button>
+          ${ok ? '<button class="secondary" onclick="resetAfterSubmit()">Start New Response</button>' : ''}
+        </div>
+      </div>`;
+      document.body.appendChild(wrap);
+    }
+
+    function resetAfterSubmit(){
+      const key = currentUser ? STORAGE_KEY + ':' + currentUser.id : STORAGE_KEY;
+      localStorage.removeItem(key);
+      location.reload();
+    }
+
+    function exportJSON(){
+      const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "pharmacy-clerkship-quest-response.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function resetQuest(){
+      if(!confirm("Reset all current answers?")) return;
+      const key = currentUser ? STORAGE_KEY + ':' + currentUser.id : STORAGE_KEY;
+      localStorage.removeItem(key);
+      location.reload();
+    }
+
+    function openDashboard(){
+      document.getElementById("dashboardModal").style.display="flex";
+      renderDashboard();
+    }
+    function closeDashboard(){ document.getElementById("dashboardModal").style.display="none"; }
+
+    function renderDashboard(){
+      const current = state;
+      const demo = [
+        {score:8, stress:["งานเยอะ/เร็ว","ระบบงานซับซ้อน"], skills:["Patient Counseling","Confidence"], patch:["Orientation ให้ชัดขึ้น","Checklist งานแต่ละวัน"], pre:4.2, word:"Growth"},
+        {score:7, stress:["กลัวตอบผิด","feedback ไม่ชัด"], skills:["Order Review","Clinical Thinking"], patch:["เพิ่ม feedback ระหว่างทาง"], pre:3.8, word:"Challenge"},
+        {score:9, stress:["ไม่กล้าถาม"], skills:["Team Communication","Workflow Understanding"], patch:["เพิ่ม buddy system"], pre:4.6, word:"Warm"},
+      ];
+      demo.push({
+        score:Number(current.answers.treasure.overallScore)||0,
+        stress:current.answers.department.stressFactors||[],
+        skills:current.answers.skill.unlockedSkills||[],
+        patch:current.answers.patch.patchRequests||[],
+        pre:Number(avgPreceptor())||0,
+        word:current.answers.treasure.oneWord||""
+      });
+
+      const avgScore = (demo.reduce((s,x)=>s+x.score,0)/demo.filter(x=>x.score).length || 0).toFixed(1);
+      const avgPre = (demo.reduce((s,x)=>s+x.pre,0)/demo.filter(x=>x.pre).length || 0).toFixed(1);
+      const stressCount = countItems(demo.flatMap(x=>x.stress));
+      const skillCount = countItems(demo.flatMap(x=>x.skills));
+      const patchCount = countItems(demo.flatMap(x=>x.patch));
+
+      document.getElementById("dashboardContent").innerHTML = `
+        <div class="summary-grid">
+          <div class="summary-card"><h3>Average Score</h3><h2>${avgScore}/10</h2></div>
+          <div class="summary-card"><h3>Preceptor Support</h3><h2>${avgPre}/5</h2></div>
+          <div class="summary-card"><h3>Responses</h3><h2>${demo.length}</h2></div>
+        </div>
+        <div class="question-card"><div class="q-title">Top Stress Monsters</div>${bars(stressCount)}</div>
+        <div class="question-card"><div class="q-title">Most Unlocked Skills</div>${bars(skillCount)}</div>
+        <div class="question-card"><div class="q-title">Most Requested Patches</div>${bars(patchCount)}</div>
+        <div class="question-card"><div class="q-title">One-word cloud mockup</div>
+          ${demo.map(x=>x.word).filter(Boolean).map(x=>`<span class="pill">${x}</span>`).join("") || "-"}
+        </div>`;
+    }
+
+    function countItems(arr){
+      const o={}; arr.filter(Boolean).forEach(x=>o[x]=(o[x]||0)+1);
+      return Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    }
+    function bars(items){
+      if(!items.length) return "<p>No data yet</p>";
+      const max = Math.max(...items.map(x=>x[1]));
+      return `<div class="dashboard-bars">` + items.map(([k,v])=>`
+        <div class="dashbar"><b>${k}</b><div class="track"><div class="fill" style="width:${(v/max)*100}%"></div></div><b>${v}</b></div>
+      `).join("") + `</div>`;
+    }
+
+    load();
+  </script>
+</body>
+</html>

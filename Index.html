@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Pharmacy Guild — Connected MVP</title>
+<style>
+:root{--bg:#171424;--panel:#f5dfaa;--ink:#2a2136;--line:#4d365c;--gold:#ffd66b;--mint:#83f0be;--blue:#7fd8ff;--purple:#a98cff;--red:#ff717f;--orange:#ffb85c;--shadow:#0a0812}
+*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:linear-gradient(180deg,#28213f,var(--bg));color:#fff5cf;min-height:100vh}
+button,input,textarea,select{font:inherit}.app{max-width:1280px;margin:auto;padding:16px}.pixel{border:4px solid var(--line);box-shadow:7px 7px var(--shadow)}
+header{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}.brand{display:flex;gap:10px;align-items:center}.logo{width:48px;height:48px;background:var(--mint);border:4px solid #fff;display:grid;place-items:center;color:var(--ink);font-size:26px}.brand h1{margin:0;font-size:24px;text-shadow:3px 3px #000}.muted{color:#6b6078;font-size:13px}.status{background:var(--gold);color:var(--ink);padding:7px 10px;border:3px solid var(--line);font-weight:bold}
+.layout{display:grid;grid-template-columns:250px 1fr;gap:14px}.sidebar{background:#2d2844;padding:12px;align-self:start}.profile{background:var(--panel);color:var(--ink);padding:11px;border:3px solid var(--line)}.profile h3{margin:0 0 4px}.nav{display:grid;gap:7px;margin-top:12px}.nav button{text-align:left}.nav button.active{background:var(--gold)}
+button{border:3px solid var(--line);padding:9px 11px;font-weight:bold;cursor:pointer;box-shadow:3px 3px #000;color:var(--ink)}button:active{transform:translate(2px,2px);box-shadow:1px 1px #000}.primary{background:var(--mint)}.secondary{background:#ece9ff}.gold{background:var(--gold)}.blue{background:var(--blue)}.purple{background:var(--purple);color:white}.danger{background:var(--red)}
+.panel{background:var(--panel);color:var(--ink);padding:15px;margin-bottom:14px}.screen{display:none}.screen.active{display:block}.grid{display:grid;gap:10px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.card{background:#fff8dc;border:3px solid var(--line);padding:11px}.card h3,.card h4{margin-top:0}
+label{display:block;font-weight:bold;font-size:13px;margin:8px 0 4px}input,textarea,select{width:100%;padding:9px;border:3px solid var(--line);background:white;color:var(--ink)}textarea{min-height:85px}
+.quest{background:#fff8dc;border:4px solid var(--line);padding:12px}.badge{display:inline-block;border:2px solid var(--line);padding:3px 6px;background:var(--blue);font-size:11px;font-weight:bold}.progress{height:20px;background:#15101f;border:3px solid var(--line)}.progress>div{height:100%;background:linear-gradient(90deg,var(--mint),var(--blue),var(--gold))}
+.item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:white;border:3px solid var(--line);padding:9px}.empty{text-align:center;padding:24px;color:#6b6078}
+.toast{position:fixed;right:18px;bottom:18px;background:#fff4cf;color:var(--ink);border:4px solid var(--line);padding:12px;box-shadow:5px 5px #000;display:none;z-index:20;font-weight:bold}
+.login{max-width:760px;margin:60px auto}.hidden{display:none!important}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.g2,.g3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand"><div class="logo">✚</div><div><h1>THE PHARMACY GUILD</h1><div>STEP 13 • Adventure Recape merged</div></div></div>
+  <div id="connectionStatus" class="status">Not signed in</div>
+</header>
+
+<section id="loginView" class="panel pixel login">
+  <h2>Guild Login</h2>
+  <p class="muted">บัญชีนี้ตรวจสอบจากชีต Users จริง</p>
+  <div class="grid g2">
+    <div><label>Username</label><input id="loginUser" value="สกาวใจ ชาวงษ์"></div>
+    <div><label>Password</label><input id="loginPass" type="password" value="สกาวใจ ชาวงษ์"></div>
+  </div>
+  <button id="loginBtn" class="primary" style="width:100%;margin-top:12px" onclick="doLogin()">Enter the Guild</button>
+  <button class="gold" style="width:100%;margin-top:8px" onclick="initializeDB()">Initialize Demo Database</button>
+  <div id="localWarning" class="card" style="margin-top:12px">
+    เปิดไฟล์นี้ผ่าน Apps Script Web App เพื่อใช้งาน backend จริง
+  </div>
+</section>
+
+<div id="appView" class="layout hidden">
+  <aside class="sidebar pixel">
+    <div class="profile">
+      <h3 id="displayName">Player</h3>
+      <div id="roleText" class="muted">Role</div>
+      <p><b id="partyName">No Party</b></p>
+      <div>XP: <b id="xpText">0</b> • Level: <b id="levelText">1</b></div>
+    </div>
+    <div id="nav" class="nav"></div>
+    <button class="danger" style="width:100%;margin-top:12px" onclick="doLogout()">Logout</button>
+  </aside>
+
+  <main>
+    <section id="dashboard" class="screen active panel pixel"></section>
+    <section id="quests" class="screen panel pixel"></section>
+    <section id="daily" class="screen panel pixel"></section>
+    <section id="evidence" class="screen panel pixel"></section>
+    <section id="gm" class="screen panel pixel"></section>
+  </main>
+</div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const APP={token:'',user:null,party:null,assignments:[],quests:[],evidence:[],daily:[]};
+
+function hasBackend(){return !!(window.google&&google.script&&google.script.run)}
+function api(name,args=[],ok=()=>{},fail=showError){
+  if(!hasBackend()){showToast('ต้องเปิดผ่าน Apps Script deployment');return}
+  let runner=google.script.run.withSuccessHandler(ok).withFailureHandler(fail);
+  runner[name](...args);
+}
+function initializeDB(){api('setupDatabase',[],r=>showToast(r.message||'Database ready'))}
+function doLogin(){
+  setBusy('loginBtn',true,'Signing in...');
+  api('login',[val('loginUser'),val('loginPass')],res=>{
+    APP.token=res.token;APP.user=res.user;
+    sessionStorage.setItem('guildToken',APP.token);
+    loadBootstrap();
+  },e=>{setBusy('loginBtn',false,'Enter the Guild');showError(e)})
+}
+function loadBootstrap(){
+  api('getAppBootstrap',[APP.token],data=>{
+    APP.user=data.user;APP.party=data.party;APP.assignments=data.assignments||[];
+    APP.quests=data.quests||[];APP.evidence=data.evidence||[];
+    showApp();refreshParty();
+  })
+}
+function refreshParty(){
+  api('getPartyDashboard',[APP.token],data=>{
+    APP.user=data.user;APP.party=data.party;APP.assignments=data.assignments||[];
+    APP.daily=data.daily||[];APP.evidence=data.evidence||[];
+    renderAll();
+  })
+}
+function showApp(){
+  q('loginView').classList.add('hidden');q('appView').classList.remove('hidden');
+  q('connectionStatus').textContent='Connected as '+APP.user.DisplayName;
+  setBusy('loginBtn',false,'Enter the Guild');
+}
+function doLogout(){
+  if(APP.token)api('logout',[APP.token],()=>{});
+  sessionStorage.removeItem('guildToken');location.reload();
+}
+function renderAll(){renderProfile();renderNav();renderDashboard();renderQuests();renderDaily();renderEvidence();renderGM()}
+function renderProfile(){
+  text('displayName',APP.user.DisplayName);text('roleText',APP.user.Role+' • '+(APP.user.CharacterClass||''));
+  text('partyName',APP.party?APP.party.PartyName:'No Party');text('xpText',APP.user.XP||0);text('levelText',APP.user.Level||1)
+}
+function renderNav(){
+  const isGM=['admin','gm','preceptor'].includes(String(APP.user.Role).toLowerCase());
+  const items=[['dashboard','🏠 Dashboard'],['quests','📜 Quests'],['daily','☀️ Daily Progress'],['evidence','📎 Evidence']];
+  items.push(['recap','🎮 Adventure Recape']);
+  if(isGM)items.push(['gm','🎲 GM Queue']);
+  q('nav').innerHTML=items.map((x,i)=>`<button data-screen="${x[0]}" class="${i===0?'active':''}" onclick="openScreen('${x[0]}')">${x[1]}</button>`).join('')
+}
+function openScreen(id){
+  if(id==='recap'){ window.location.href='?page=recap'; return; }
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));q(id).classList.add('active');
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.screen===id))
+  if(id==='gm')renderGM()
+}
+function renderDashboard(){
+  const active=APP.assignments.filter(a=>!['completed','archived'].includes(String(a.Status)));
+  const completed=APP.assignments.filter(a=>String(a.Status)==='completed');
+  q('dashboard').innerHTML=`<h2>Party Dashboard</h2>
+  <div class="grid g3">
+    <div class="card"><h3>${active.length}</h3><div>Active Quests</div></div>
+    <div class="card"><h3>${completed.length}</h3><div>Completed</div></div>
+    <div class="card"><h3>${APP.evidence.length}</h3><div>Evidence Records</div></div>
+  </div>
+  <h3>Current Assignments</h3>
+  <div class="grid">${active.length?active.map(a=>assignmentCard(a)).join(''):'<div class="empty">No active assignment</div>'}</div>`
+}
+function assignmentCard(a){
+  const name=a.quest?a.quest.QuestName:a.QuestID;
+  return `<div class="quest"><span class="badge">${a.Status}</span><h3>${esc(name)}</h3>
+  <div class="progress"><div style="width:${Number(a.Progress||0)}%"></div></div>
+  <p>${a.Progress||0}% • Risk: <b>${a.Risk||'green'}</b></p></div>`
+}
+function renderQuests(){
+  api('listAvailableQuests',[APP.token],list=>{
+    APP.quests=list;
+    q('quests').innerHTML=`<h2>Available Quest Board</h2><div class="grid g2">
+    ${list.length?list.map(x=>`<div class="quest"><span class="badge">${x.QuestType}</span><h3>${esc(x.QuestName)}</h3>
+    <p>${esc(x.Objective)}</p><p><b>${x.XPReward} XP</b> • ${esc(x.BadgeReward||'No badge')}</p>
+    <button class="primary" ${x.alreadyAssigned||!APP.party?'disabled':''} onclick="acceptQuestUI('${x.QuestID}')">${x.alreadyAssigned?'Already Assigned':'Accept as Party'}</button></div>`).join(''):'<div class="empty">No quest available</div>'}
+    </div>`
+  })
+}
+function acceptQuestUI(questId){
+  if(!APP.party){showToast('User has no Party');return}
+  const roles={leader:APP.user.UserID,recorder:'',presenter:''};
+  api('acceptQuest',[APP.token,questId,APP.party.PartyID,roles],r=>{
+    showToast('Quest request sent to GM');refreshParty();renderQuests()
+  })
+}
+function activeAssignment(){
+  return APP.assignments.find(a=>['in_progress','waiting_gm_approval','waiting_gm_review','revision_required'].includes(String(a.Status)))
+}
+function renderDaily(){
+  const a=activeAssignment();
+  if(!a){q('daily').innerHTML='<h2>Daily Progress</h2><div class="empty">Accept a quest first</div>';return}
+  q('daily').innerHTML=`<h2>Daily Progress</h2><p>Assignment: <b>${esc(a.quest?a.quest.QuestName:a.AssignmentID)}</b></p>
+  <div class="grid g2"><div><label>Previous Turn</label><textarea id="prev"></textarea></div><div><label>Current Turn</label><textarea id="curr"></textarea></div></div>
+  <div class="grid g2"><div><label>Obstacle</label><textarea id="obs"></textarea></div><div><label>Need GM Support</label><textarea id="support"></textarea></div></div>
+  <div class="grid g2"><div><label>Risk</label><select id="risk"><option>green</option><option>yellow</option><option>red</option></select></div>
+  <div><label>Progress %</label><input id="prog" type="number" min="0" max="100" value="${a.Progress||10}"></div></div>
+  <button class="primary" style="margin-top:10px" onclick="saveDailyUI('${a.AssignmentID}')">Save Daily Progress</button>
+  <h3>Recent Updates</h3><div class="grid">${APP.daily.slice(-5).reverse().map(d=>`<div class="item"><div><b>${fmt(d.ProgressDate)}</b><br>${esc(d.CurrentTurn||'')}</div><span class="badge">${d.ProgressPercent}%</span></div>`).join('')||'<div class="empty">No updates</div>'}</div>`
+}
+function saveDailyUI(id){
+  const data={assignmentId:id,previousTurn:val('prev'),currentTurn:val('curr'),obstacle:val('obs'),needGMSupport:val('support'),risk:val('risk'),progressPercent:Number(val('prog'))};
+  api('saveDailyProgress',[APP.token,data],()=>{showToast('Daily progress saved');refreshParty()})
+}
+function renderEvidence(){
+  const a=activeAssignment();
+  q('evidence').innerHTML=`<h2>Evidence Submission</h2>
+  ${a?`<div class="grid g2"><div class="card">
+  <label>Evidence type</label><select id="etype"><option>Google Drive Link</option><option>PDF Report</option><option>Text Reflection</option></select>
+  <label>Title</label><input id="etitle"><label>URL</label><input id="eurl"><label>Reflection</label><textarea id="enote"></textarea>
+  <button class="primary" onclick="submitEvidenceUI('${a.AssignmentID}')">Submit Evidence</button></div>
+  <div class="card"><h3>Requirement</h3><p>Evidence will be written to the Evidence sheet and the assignment becomes waiting_gm_review.</p></div></div>`:'<div class="empty">No active assignment</div>'}
+  <h3>Submitted Evidence</h3><div class="grid">${APP.evidence.length?APP.evidence.map(e=>`<div class="item"><div><b>${esc(e.Title)}</b><br>${esc(e.EvidenceType)} • ${esc(e.ReviewStatus)}</div><span class="badge">${fmt(e.SubmittedAt)}</span></div>`).join(''):'<div class="empty">No evidence submitted</div>'}</div>`
+}
+function submitEvidenceUI(id){
+  const data={assignmentId:id,evidenceType:val('etype'),title:val('etitle'),url:val('eurl'),reflectionNote:val('enote')};
+  api('submitEvidence',[APP.token,data],()=>{showToast('Evidence submitted');refreshParty()})
+}
+function renderGM(){
+  if(!['admin','gm','preceptor'].includes(String(APP.user.Role).toLowerCase())){q('gm').innerHTML='<h2>GM Queue</h2><div class="empty">GM permission required</div>';return}
+  api('getGMQueue',[APP.token],data=>{
+    q('gm').innerHTML=`<h2>GM Review Queue</h2>
+    <h3>Quest Acceptance / Progress</h3><div class="grid">${data.assignments.length?data.assignments.map(a=>`<div class="item"><div><b>${esc(a.quest?a.quest.QuestName:a.QuestID)}</b><br>${esc(a.party?a.party.PartyName:a.PartyID)} • ${a.Status}</div>
+    <div>${a.Status==='waiting_gm_approval'?`<button class="primary" onclick="approveAssignment('${a.AssignmentID}')">Approve</button>`:''}</div></div>`).join(''):'<div class="empty">No assignment pending</div>'}</div>
+    <h3>Evidence Review</h3><div class="grid">${data.evidence.length?data.evidence.map(e=>`<div class="card"><h3>${esc(e.Title)}</h3><p>${esc(e.party?e.party.PartyName:e.PartyID)} • ${esc(e.ReviewStatus)}</p>
+    <label>Feedback</label><textarea id="fb_${e.EvidenceID}"></textarea><label>Competency</label><select id="cp_${e.EvidenceID}"><option>Achieved</option><option>Partially Achieved</option><option>Needs More Practice</option></select>
+    <button class="blue" onclick="reviewEvidenceUI('${e.EvidenceID}',true)">Approve Evidence</button>
+    <button class="danger" onclick="reviewEvidenceUI('${e.EvidenceID}',false)">Request Revision</button>
+    ${e.ReviewStatus==='approved'?`<button class="gold" onclick="completeQuestUI('${e.AssignmentID}')">Complete Quest</button>`:''}</div>`).join(''):'<div class="empty">No evidence pending</div>'}</div>`
+  })
+}
+function approveAssignment(id){api('approveQuestAcceptance',[APP.token,id],()=>{showToast('Quest approved');renderGM()})}
+function reviewEvidenceUI(id,approved){
+  const decision={approved,feedback:val('fb_'+id),competencyResult:val('cp_'+id)};
+  api('reviewEvidence',[APP.token,id,decision],()=>{showToast(approved?'Evidence approved':'Revision requested');renderGM()})
+}
+function completeQuestUI(id){api('completeQuest',[APP.token,id],r=>{showToast('Quest completed: +'+r.xp+' XP');renderGM()})}
+function setBusy(id,busy,label){const e=q(id);if(!e)return;e.disabled=busy;e.textContent=label}
+function val(id){return q(id)?.value||''}function text(id,v){if(q(id))q(id).textContent=v}function q(id){return document.getElementById(id)}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function fmt(v){if(!v)return '-';try{return new Date(v).toLocaleString('th-TH')}catch(e){return String(v)}}
+function showError(e){showToast(e&&e.message?e.message:String(e))}
+function showToast(m){const t=q('toast');t.textContent=m;t.style.display='block';clearTimeout(window.tt);window.tt=setTimeout(()=>t.style.display='none',2200)}
+(function init(){
+  if(hasBackend())q('localWarning').classList.add('hidden');
+  const token=sessionStorage.getItem('guildToken');
+  if(token){APP.token=token;api('getCurrentUser',[token],u=>{APP.user=u;loadBootstrap()},()=>sessionStorage.removeItem('guildToken'))}
+})();
+</script>
+</body>
+</html>
