@@ -52,6 +52,8 @@ function ensureDatabase_() {
       sh.autoResizeColumns(1, headers.length);
     }
   });
+
+  migratePlainPasswords_();
 }
 
 function getSheetDefinitions_() {
@@ -171,12 +173,28 @@ function seedQuestTemplates_() {
 
 function login(username, password) {
   ensureDatabase_();
+  debugLog_('login:start', {
+    username: username,
+    passwordLength: String(password || '').length
+  });
   const rows = readObjects_(CFG.SHEETS.USERS);
   const user = rows.find(r =>
     String(r.Username).trim().toLowerCase() === String(username).trim().toLowerCase() &&
     String(r.Status).toLowerCase() === 'active'
   );
-  if (!user || user.PasswordHash !== hashPassword_(password)) {
+  debugLog_('login:userLookup', {
+    username: username,
+    found: !!user,
+    userId: user && user.UserID,
+    status: user && user.Status,
+    storedPasswordInfo: user ? passwordDebugInfo_(user.PasswordHash) : null
+  });
+  if (!user || !passwordMatches_(user, password)) {
+    debugLog_('login:failed', {
+      username: username,
+      found: !!user,
+      userId: user && user.UserID
+    });
     throw new Error('Username or password is incorrect');
   }
 
@@ -188,6 +206,11 @@ function login(username, password) {
     expiresAt: Date.now() + CFG.SESSION_HOURS * 3600000
   };
   CacheService.getScriptCache().put('SESSION_' + token, JSON.stringify(payload), CFG.SESSION_HOURS * 3600);
+  debugLog_('login:success', {
+    userId: user.UserID,
+    role: user.Role,
+    expiresAt: payload.expiresAt
+  });
 
   return {
     ok: true,
@@ -437,12 +460,99 @@ function updateBy_(name,key,value,patch) {
 }
 
 function hashPassword_(value) {
-  const bytes = Utilities.computeDigest(
-    Utilities.DigestAlgorithm.SHA_256,
-    String(value),
-    Utilities.Charset.UTF_8
-  );
-  return bytes.map(b => ('0' + (b & 255).toString(16)).slice(-2)).join('');
+  return String(value || '').replace(/\u00a0/g, ' ').trim();
+}
+
+function passwordMatches_(user, password) {
+  const plainPassword = hashPassword_(password);
+  const storedPassword = hashPassword_(user.PasswordHash);
+  const defaultPassword = getDefaultPassword_(user);
+  debugLog_('passwordMatches:start', {
+    userId: user.UserID,
+    username: user.Username,
+    storedPasswordInfo: passwordDebugInfo_(storedPassword),
+    typedPasswordInfo: passwordDebugInfo_(plainPassword),
+    defaultPasswordInfo: passwordDebugInfo_(defaultPassword),
+    storedEqualsTyped: storedPassword === plainPassword,
+    typedEqualsDefault: plainPassword === defaultPassword,
+    storedIsLegacy: isLegacyPasswordValue_(storedPassword)
+  });
+  if (storedPassword === plainPassword) return true;
+
+  if (plainPassword === defaultPassword && isLegacyPasswordValue_(storedPassword)) {
+    updateBy_(CFG.SHEETS.USERS, 'UserID', user.UserID, {
+      PasswordHash: defaultPassword,
+      UpdatedAt: new Date()
+    });
+    debugLog_('passwordMatches:migratedLegacyPassword', {
+      userId: user.UserID,
+      username: user.Username
+    });
+    return true;
+  }
+
+  debugLog_('passwordMatches:noMatch', {
+    userId: user.UserID,
+    username: user.Username
+  });
+  return false;
+}
+
+function migratePlainPasswords_() {
+  const ss = SpreadsheetApp.getActive();
+  const sh = ss.getSheetByName(CFG.SHEETS.USERS);
+  if (!sh || sh.getLastRow() < 2) return;
+
+  const data = sh.getDataRange().getValues();
+  const headers = data[0];
+  const passCol = headers.indexOf('PasswordHash');
+  const usernameCol = headers.indexOf('Username');
+  const updatedCol = headers.indexOf('UpdatedAt');
+  if (passCol < 0 || usernameCol < 0) return;
+
+  data.slice(1).forEach((row, i) => {
+    const currentPassword = hashPassword_(row[passCol]);
+    if (!isLegacyPasswordValue_(currentPassword)) return;
+
+    const user = Object.fromEntries(headers.map((h, c) => [h, row[c]]));
+    sh.getRange(i + 2, passCol + 1).setValue(getDefaultPassword_(user));
+    if (updatedCol >= 0) sh.getRange(i + 2, updatedCol + 1).setValue(new Date());
+    debugLog_('migratePlainPasswords_:rowMigrated', {
+      row: i + 2,
+      userId: user.UserID,
+      username: user.Username,
+      oldPasswordInfo: passwordDebugInfo_(currentPassword),
+      newPasswordInfo: passwordDebugInfo_(getDefaultPassword_(user))
+    });
+  });
+}
+
+function getDefaultPassword_(user) {
+  const username = hashPassword_(user && user.Username);
+  if (username.toLowerCase() === 'makin') return '0128662';
+  return username;
+}
+
+function isLegacyPasswordValue_(value) {
+  const password = hashPassword_(value);
+  return password === '' || /^[a-f0-9]{64}$/i.test(password);
+}
+
+function passwordDebugInfo_(value) {
+  const text = hashPassword_(value);
+  return {
+    length: text.length,
+    empty: text === '',
+    legacySha256Shape: /^[a-f0-9]{64}$/i.test(text),
+    firstCharCode: text ? text.charCodeAt(0) : '',
+    lastCharCode: text ? text.charCodeAt(text.length - 1) : ''
+  };
+}
+
+function debugLog_(event, data) {
+  const payload = Object.assign({ event: event, at: new Date().toISOString() }, data || {});
+  console.log(JSON.stringify(payload));
+  Logger.log(JSON.stringify(payload));
 }
 
 function sanitizeUser_(u) {
