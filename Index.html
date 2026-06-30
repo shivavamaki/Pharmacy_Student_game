@@ -31,8 +31,8 @@ label{display:block;font-weight:bold;font-size:13px;margin:8px 0 4px}input,texta
   <h2>Guild Login</h2>
   <p class="muted">บัญชีนี้ตรวจสอบจากชีต Users จริง</p>
   <div class="grid g2">
-    <div><label>Username</label><input id="loginUser" value="สกาวใจ ชาวงษ์"></div>
-    <div><label>Password</label><input id="loginPass" type="password" value="สกาวใจ ชาวงษ์"></div>
+    <div><label>Username</label><input id="loginUser" value="test"></div>
+    <div><label>Password</label><input id="loginPass" type="password" value="test"></div>
   </div>
   <button id="loginBtn" class="primary" style="width:100%;margin-top:12px" onclick="doLogin()">Enter the Guild</button>
   <button class="gold" style="width:100%;margin-top:8px" onclick="initializeDB()">Initialize Demo Database</button>
@@ -69,7 +69,13 @@ const APP={token:'',user:null,party:null,assignments:[],quests:[],evidence:[],da
 
 function hasBackend(){return !!(window.google&&google.script&&google.script.run)}
 function api(name,args=[],ok=()=>{},fail=showError){
-  if(!hasBackend()){showToast('ต้องเปิดผ่าน Apps Script deployment');return}
+  if(!hasBackend()){
+    showToast('ต้องเปิดผ่าน Apps Script deployment');
+    if (typeof fail === 'function') {
+      try { fail(new Error('No backend available')); } catch(e) {}
+    }
+    return;
+  }
   let runner=google.script.run.withSuccessHandler(ok).withFailureHandler(fail);
   runner[name](...args);
 }

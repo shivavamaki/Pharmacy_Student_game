@@ -110,16 +110,21 @@ function seedDemoData_() {
 
 function seedUsers_() {
   const sh = sheet_(CFG.SHEETS.USERS);
-  if (sh.getLastRow() > 1) return;
+  const rows = sh.getDataRange().getValues();
+  const existingUsernames = rows.slice(1).map(r => String(r[1] || '').trim().toLowerCase());
 
   const now = new Date();
   const users = [
     ['USR-ADMIN','makin',hashPassword_('0128662'),'GM ศิวาวุธ','BKN','All','admin','Campaign Master','',1,0,'active',false,now,now],
     ['USR-001','สกาวใจ ชาวงษ์',hashPassword_('สกาวใจ ชาวงษ์'),'สกาวใจ ชาวงษ์','EAU','Rotation 1','student','Clinical Alchemist','PTY-001',2,190,'active',true,now,now],
     ['USR-002','ปวริศ วงศ์วัฒนาเสถียร',hashPassword_('ปวริศ วงศ์วัฒนาเสถียร'),'ปวริศ วงศ์วัฒนาเสถียร','มอ','Rotation 1','student','Prescription Ranger','PTY-001',2,170,'active',true,now,now],
-    ['USR-003','ไปรยา จันทมงคล',hashPassword_('ไปรยา จันทมงคล'),'ไปรยา จันทมงคล','มอบ','Rotation 1','student','Counseling Bard','PTY-001',2,165,'active',true,now,now]
+    ['USR-003','ไปรยา จันทมงคล',hashPassword_('ไปรยา จันทมงคล'),'ไปรยา จันทมงคล','มอบ','Rotation 1','student','Counseling Bard','PTY-001',2,165,'active',true,now,now],
+    ['USR-TEST','test',hashPassword_('test'),'Test User','Demo','Rotation 1','student','Test Mage','',1,0,'active',true,now,now]
   ];
-  sh.getRange(2, 1, users.length, users[0].length).setValues(users);
+
+  const missing = users.filter(user => !existingUsernames.includes(String(user[1]).trim().toLowerCase()));
+  if (missing.length === 0) return;
+  sh.getRange(sh.getLastRow() + 1, 1, missing.length, missing[0].length).setValues(missing);
 }
 
 function seedParties_() {
@@ -168,7 +173,7 @@ function login(username, password) {
   ensureDatabase_();
   const rows = readObjects_(CFG.SHEETS.USERS);
   const user = rows.find(r =>
-    String(r.Username).trim() === String(username).trim() &&
+    String(r.Username).trim().toLowerCase() === String(username).trim().toLowerCase() &&
     String(r.Status).toLowerCase() === 'active'
   );
   if (!user || user.PasswordHash !== hashPassword_(password)) {
