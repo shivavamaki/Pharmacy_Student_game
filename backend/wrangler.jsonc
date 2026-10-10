@@ -1,0 +1,19 @@
+{
+  "name": "pharmacy-guild-api-dev",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-10-10",
+  "workers_dev": true,
+  "vars": {
+    "APP_ENV": "development",
+    "FIREBASE_PROJECT_ID": "",
+    "ALLOWED_ORIGIN": "http://localhost:5173"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pharmacy-guild-dev",
+      "database_id": "REPLACE_WITH_DEV_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
