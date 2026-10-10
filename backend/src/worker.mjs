@@ -32,7 +32,7 @@ return {
         'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'no-referrer',
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-        'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline' https://www.gstatic.com; style-src 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.gstatic.com; frame-src https://*.firebaseapp.com; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline' https://www.gstatic.com https://apis.google.com; style-src 'unsafe-inline'; connect-src 'self' https://apis.google.com https://*.googleapis.com https://*.firebaseapp.com https://*.gstatic.com; frame-src https://*.firebaseapp.com; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
       } });
     }
     if (path === '/health') {
