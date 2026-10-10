@@ -16,7 +16,8 @@ export function googleKeyResolver(fetcher = fetch) {
     if (now >= expires || (!certs[header.kid] && now - lastFetch >= 30000)) {
       pending ??= (async () => {
         try {
-          const response = await fetcher(endpoint, { signal: AbortSignal.timeout(5000), redirect: 'error' });
+          // workerd rejects redirect:'error'; manual + !ok rejects redirects without following them.
+          const response = await fetcher(endpoint, { signal: AbortSignal.timeout(5000), redirect: 'manual' });
           if (!response.ok) throw new Error('key fetch failed');
           const next = await response.json();
           if (!next || typeof next !== 'object' || Array.isArray(next) || !Object.keys(next).length)

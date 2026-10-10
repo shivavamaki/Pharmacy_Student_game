@@ -2,6 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AuthError, googleKeyResolver } from '../src/auth.mjs';
 import { createWorker } from '../src/worker.mjs';
+test('key fetch uses Workers-compatible redirect mode and refuses redirects', async () => {
+  let calls = 0;
+  const resolver = googleKeyResolver(async (url, options) => {
+    calls++;
+    assert.equal(options.redirect, 'manual');
+    assert.equal(url, 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+    return new Response(null, { status: 302, headers: { Location: 'https://other.example/' } });
+  });
+  await assert.rejects(() => resolver({ alg: 'RS256', kid: 'test' }),
+    { stage: 'google_key_fetch', status: 503 });
+  assert.equal(calls, 1);
+});
 test('diagnoses Google key fetch failure without the underlying error', async () => {
   const resolver = googleKeyResolver(async () => { throw new Error('private upstream detail'); });
   await assert.rejects(() => resolver({ alg: 'RS256', kid: 'test' }),
