@@ -8,8 +8,36 @@ const parse=(v,fallback)=>{if(v==null||v==='')return fallback;return typeof v===
 const date=v=>{if(!v)return new Date(0).toISOString();const input=typeof v==='string'&&/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(v)?v.replace(' ','T')+'+07:00':v;const d=new Date(input);if(Number.isNaN(d.valueOf()))throw Error('Invalid source date');return d.toISOString();};
 const number=(v,min=0)=>{const n=Number(v||0);if(!Number.isFinite(n)||n<min)throw Error('Invalid numeric value');return n;};
 const quote=v=>v===null?'NULL':typeof v==='number'?String(v):"'"+String(v).replace(/'/g,"''")+"'";
+// The deployed recap-only application uses spaced Users headers.
+export function normalizeLegacySource(source){
+ if(!source||typeof source!=='object'||Array.isArray(source))throw Error('Expected object of sheet-name arrays');
+ const output={...source};
+ if(source.Users!==undefined){
+  if(!Array.isArray(source.Users))throw Error('Invalid sheet Users');
+  output.Users=source.Users.map(row=>{
+   if(!row||typeof row!=='object'||Array.isArray(row))throw Error('Invalid Users row');
+   const user={...row};
+   for(const [alias,key]of [['User ID','UserID'],['Display Name','DisplayName'],['Created At','CreatedAt']]){
+    if(Object.hasOwn(row,alias)){
+     if(Object.hasOwn(row,key)&&str(row[key])!==str(row[alias]))throw Error('Conflicting Users column aliases: '+key);
+     user[key]=row[alias];delete user[alias];
+    }
+   }
+   if(Object.hasOwn(row,'Active')){
+    const active=row.Active;
+    if(![true,false,'TRUE','FALSE','true','false',1,0,'1','0'].includes(active))throw Error('Invalid Users Active value');
+    const status=[true,'TRUE','true',1,'1'].includes(active)?'active':'inactive';
+    if(user.Status!==undefined&&str(user.Status).toLowerCase()!==status)throw Error('Conflicting Users status columns');
+    user.Status=status;
+   }
+   return user;
+  });
+ }
+ return output;
+}
 export function convertLegacy(source){
  if(!source||typeof source!=='object'||Array.isArray(source))throw Error('Expected object of sheet-name arrays');
+ source=normalizeLegacySource(source);
  const statements=[],counts={},warnings=[];
  const rows=name=>{const rows=source[name]||[];if(!Array.isArray(rows)||rows.some(r=>!r||typeof r!=='object'||Array.isArray(r)))throw Error('Invalid sheet '+name);return rows;};
  const insert=(table,row)=>{for(const [key,value]of Object.entries(row))if(value===undefined)throw Error('Missing '+table+'.'+key);statements.push(`INSERT INTO ${table} (${Object.keys(row).join(',')}) VALUES (${Object.values(row).map(quote).join(',')});`);counts[table]=(counts[table]||0)+1;};
@@ -20,8 +48,8 @@ export function convertLegacy(source){
  for(const u of users.values()){
  const role=str(u.Role).toLowerCase();if(!['student','gm','preceptor','admin'].includes(role))throw Error('Invalid role');
  // Identity and activation always require explicit administrator enrollment after import.
- insert('profiles',{id:str(u.UserID),firebase_uid:null,email:null,display_name:str(u.DisplayName||u.Username),university:nullable(u.University),rotation:nullable(u.Rotation),character_class:nullable(u.CharacterClass),role,status:'pending',created_at:date(u.CreatedAt),updated_at:date(u.UpdatedAt)});
- const logged=rows('XPLog').filter(x=>str(x.UserID)===str(u.UserID)).reduce((sum,x)=>sum+number(x.XP),0);if(number(u.XP)!==logged)warnings.push({profileId:str(u.UserID),sourceProfileXP:number(u.XP),sourceXPLogTotal:logged,action:'Reconcile balance before cutover; import uses XPLog only.'});
+ insert('profiles',{id:str(u.UserID),firebase_uid:null,email:null,display_name:str(u.DisplayName||u.Username),university:nullable(u.University),rotation:nullable(u.Rotation),character_class:nullable(u.CharacterClass),role,status:'pending',created_at:date(u.CreatedAt),updated_at:date(u.UpdatedAt||u.CreatedAt)});
+ const logged=rows('XPLog').filter(x=>str(x.UserID)===str(u.UserID)).reduce((sum,x)=>sum+number(x.XP),0);if(u.XP!==undefined&&number(u.XP)!==logged)warnings.push({profileId:str(u.UserID),sourceProfileXP:number(u.XP),sourceXPLogTotal:logged,action:'Reconcile balance before cutover; import uses XPLog only.'});
  }
  for(const p of parties.values())insert('parties',{id:str(p.PartyID),name:str(p.PartyName),rotation:nullable(p.Rotation),gm_profile_id:actor(p.GMUserID),status:str(p.Status||'active').toLowerCase()});
  for(const q of quests.values())insert('quests',{id:str(q.QuestID),name:str(q.QuestName),objective:nullable(q.Objective),quest_type:nullable(q.QuestType),xp_reward:number(q.XPReward),status:str(q.Status||'locked').toLowerCase(),metadata_json:JSON.stringify({chapter:number(q.Chapter),category:str(q.Category),competencies:parse(q.Competencies,[]),requiredEvidence:parse(q.RequiredEvidence,[]),badgeReward:str(q.BadgeReward),defaultDeadlineDays:number(q.DefaultDeadlineDays||3),createdBy:actor(q.CreatedBy),createdAt:date(q.CreatedAt)})});
@@ -46,7 +74,7 @@ export function convertLegacy(source){
  const payload=parse(r['Raw JSON'],{});const response=normalizeRecap(payload.response||r.response||{});const uid=requireRef(users,r['User ID']||r.profileId,'recap profile');const responseId=str(r['Response ID']||r.id);if(!responseId)throw Error('Missing recap ID');insert('recap_responses',{id:responseId,profile_id:uid,idempotency_key:'legacy:'+responseId,answers_json:JSON.stringify(response),submitted_at:date(r['Client Timestamp']||payload.submittedAtClient||r['Submitted At (Bangkok)'])});
  }
  const preserved={
- Users:['UserID','DisplayName','University','Rotation','Role','CharacterClass','PartyID','Level','XP','Status','CreatedAt','UpdatedAt'],
+ Users:['UserID','DisplayName','University','Rotation','Role','CharacterClass','PartyID','Level','XP','Status','Active','CreatedAt','UpdatedAt'],
  Parties:['PartyID','PartyName','Rotation','GMUserID','MemberUserIDs','CurrentQuestID','PartyXP','Risk','Status','CreatedAt','UpdatedAt'],
  Quests:['QuestID','QuestName','QuestType','Chapter','Category','Objective','Competencies','RequiredEvidence','XPReward','BadgeReward','DefaultDeadlineDays','Status','CreatedBy','CreatedAt','UpdatedAt'],
  QuestAssignments:['AssignmentID','QuestID','PartyID','AssignedGMUserID','AcceptedAt','MemberConfirmations','PartyRolesJSON','Progress','Risk','Status','Deadline','GMComment','CreatedAt','UpdatedAt'],
