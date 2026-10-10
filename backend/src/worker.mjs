@@ -45,7 +45,9 @@ return {
       try {
         return json({ profile: await authenticate(request, env, verifyToken) }, 200, cors);
       } catch (error) {
-        if (error instanceof AuthError) return json({ error: error.code }, error.status, cors);
+        if (error instanceof AuthError) return json({ error: error.code,
+          ...(env.APP_ENV === 'development' && error.stage ? { stage: error.stage } : {})
+        }, error.status, cors);
         return json({ error: 'authentication_unavailable' }, 503, cors);
       }
     }

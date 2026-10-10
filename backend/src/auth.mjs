@@ -1,7 +1,7 @@
 import { jwtVerify, importX509 } from 'jose';
 
 export class AuthError extends Error {
-  constructor(code, status) { super(code); this.code = code; this.status = status; }
+  constructor(code, status, stage) { super(code); this.code = code; this.status = status; this.stage = stage; }
 }
 
 // Only Google's fixed Secure Token endpoint can supply verification keys.
@@ -24,7 +24,7 @@ export function googleKeyResolver(fetcher = fetch) {
           const maxAge = /(?:^|[,\s])max-age=(\d+)/i.exec(response.headers.get('Cache-Control') || '');
           certs = next; imported.clear(); lastFetch = Date.now();
           expires = lastFetch + Math.min(Number(maxAge?.[1] ?? 300), 86400) * 1000;
-        } catch { throw new AuthError('authentication_unavailable', 503); }
+        } catch { throw new AuthError('authentication_unavailable', 503, 'google_key_fetch'); }
       })();
       try { await pending; } finally { pending = undefined; }
     }
@@ -32,7 +32,7 @@ export function googleKeyResolver(fetcher = fetch) {
       throw new AuthError('invalid_token', 401);
     if (!imported.has(header.kid)) {
       try { imported.set(header.kid, await importX509(certs[header.kid], 'RS256')); }
-      catch { throw new AuthError('authentication_unavailable', 503); }
+      catch { throw new AuthError('authentication_unavailable', 503, 'google_key_import'); }
     }
     return imported.get(header.kid);
   };
@@ -71,7 +71,7 @@ export async function authenticate(request, env, verifyToken) {
   let profile;
   try {
     profile = await env.DB.prepare('SELECT id, display_name, role, status FROM profiles WHERE firebase_uid = ?').bind(uid).first();
-  } catch { throw new AuthError('authentication_unavailable', 503); }
+  } catch { throw new AuthError('authentication_unavailable', 503, 'd1_profile_lookup'); }
   if (!profile) throw new AuthError('enrollment_required', 403);
   if (profile.status !== 'active') throw new AuthError('account_not_active', 403);
   if (!['student', 'gm', 'preceptor', 'admin'].includes(profile.role))
