@@ -6,7 +6,7 @@
   "vars": {
     "APP_ENV": "development",
     "FIREBASE_PROJECT_ID": "pharmacy-student-game",
-    "ALLOWED_ORIGIN": "https://pharmacy-guild-api-dev.shivavamaki.workers.dev"
+    "ALLOWED_ORIGIN": "https://pharmacy-guild-web-dev.pages.dev"
   },
   "d1_databases": [
     {
