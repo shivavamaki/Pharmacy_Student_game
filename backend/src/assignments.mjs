@@ -5,7 +5,7 @@ export async function listAssignments(profile, db, partyId) {
       WHERE p.id = ? AND p.status = 'active' AND (
         ? = 'admin' OR EXISTS (
           SELECT 1 FROM party_members m WHERE m.party_id = p.id AND m.profile_id = ?
-        ) OR (? = 'gm' AND p.gm_profile_id = ?)
+        ) OR (? IN ('gm','preceptor') AND p.gm_profile_id = ?)
       )`).bind(partyId, profile.role, profile.id, profile.role, profile.id).first();
     if (!party) throw new AuthError('not_found', 404);
     const { results } = await db.prepare(`SELECT a.id, q.name AS quest_name, q.objective,

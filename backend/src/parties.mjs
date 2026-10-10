@@ -9,7 +9,7 @@ export async function listParties(profile, db) {
        FROM parties p LEFT JOIN profiles gm ON gm.id = p.gm_profile_id
        WHERE p.status = 'active' AND (
          EXISTS (SELECT 1 FROM party_members m WHERE m.party_id = p.id AND m.profile_id = ?)
-         OR (? = 'gm' AND p.gm_profile_id = ?)
+         OR (? IN ('gm','preceptor') AND p.gm_profile_id = ?)
        ) ORDER BY p.name, p.id LIMIT 101`;
   try {
     const statement = db.prepare(query);

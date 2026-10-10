@@ -1,4 +1,5 @@
 import { AuthError, authenticate, createTokenVerifier } from './auth.mjs';
+import { gameAPI } from './game.mjs';
 import { listAssignments } from './assignments.mjs';
 import { listParties } from './parties.mjs';
 import { authTestHtml } from './auth-test.mjs';
@@ -22,8 +23,8 @@ return {
     if (request.method === 'OPTIONS') {
       if (!origin) return json({ error: 'origin_required' }, 400);
       return new Response(null, { status: 204, headers: {
-        ...cors, 'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization, Content-Type'
+        ...cors, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type, Idempotency-Key'
       } });
     }
     if (path === '/auth-test' && env.APP_ENV === 'development') {
@@ -62,8 +63,20 @@ return {
         return json({ error: 'authentication_unavailable' }, 503, cors);
       }
     }
+    if (/^\/api\/(summary|quests|parties\/[^/]+\/(dashboard|accept)|assignments\/[^/]+(?:\/(approve|complete|daily|evidence))?|daily\/[^/]+\/review|evidence\/[^/]+\/review|gm-queue|assessments|recap(?:\/(draft|submit|analytics))?|admin\/(profiles|quests|parties|settings|audit|recaps))$/.test(path)) {
+      try {
+        const profile = await authenticate(request, env, verifyToken);
+        const version = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='api_operations'").first();
+        if (!version) throw new AuthError('migration_required', 503);
+        return json(await gameAPI(request, env.DB, profile, path), 200, cors);
+      } catch (error) {
+        if (error instanceof AuthError) return json({ error: error.code }, error.status, cors);
+        return json({ error: 'data_unavailable' }, 503, cors);
+      }
+    }
     return json({ error: 'not_found' }, 404, cors);
   }
 };
 }
 export default createWorker();
+

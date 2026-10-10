@@ -78,5 +78,5 @@ test('database failure returns 503',async()=>{
 });
 test('health reflects auth configuration and unknown API stays closed',async()=>{
   assert.equal((await (await worker.fetch(new Request('https://api.test/health'),env)).json()).authenticationReady,true);
-  assert.equal((await worker.fetch(new Request('https://api.test/api/quests'),env)).status,404);
+  assert.equal((await worker.fetch(new Request('https://api.test/api/unimplemented'),env)).status,404);
 });

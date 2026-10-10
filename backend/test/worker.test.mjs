@@ -16,5 +16,5 @@ test('disallowed browser origin returns 403',async()=>assert.equal((await run('/
 test('allowed preflight advertises only current methods',async()=>{
   const r=await run('/api/me',{method:'OPTIONS',headers:{Origin:'https://app.test'}},{ALLOWED_ORIGIN:'https://app.test'});
   assert.equal(r.status,204);assert.equal(r.headers.get('Access-Control-Allow-Origin'),'https://app.test');
-  assert.equal(r.headers.get('Access-Control-Allow-Methods'),'GET, OPTIONS');
+  assert.equal(r.headers.get('Access-Control-Allow-Methods'),'GET, POST, OPTIONS');
 });

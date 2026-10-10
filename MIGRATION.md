@@ -147,3 +147,10 @@ The Pages welcome loads this real endpoint, renders strings with textContent and
 Validation: real SQLite schema-backed tests cover admin/GM/student/preceptor scope, archived filtering, query-role spoofing, membership removal, inactive users, missing identity, denied writes, list bounds and database failure. Browser client tests cover token destination, empty results, denials and malformed responses. Frontend module syntax and the full local suite pass. Live party reads from D1/Pages still need owner verification after the builds are Ready.
 
 Optional development-only test data: manually create one clearly named test party in pharmacy-guild-dev using D1 Console, then refresh the Pages welcome. Do not run foundation migrations again or mix test rows with an eventual production import. Next: scoped assignment/quest reads for each visible party, then administrative party management.
+
+## Full repository game port — 2026-10-10
+The remaining repository game operations and responsive Pages screens now use Cloudflare Worker/D1: quest acceptance/approval, daily progress/review, evidence/revision, atomic completion and deduplicated XP/Badge awards, academic assessment, account-scoped Adventure Recap drafts/history and server scoring, aggregate analytics, and admin management. Offline sanitized export/import tooling is included.
+
+See [docs/cloudflare-migration.md](docs/cloudflare-migration.md) for the feature map, authorization rules, endpoint paths, owner SQL rollout and rehearsal import procedure. The owner must apply 0002_game.sql once and may then apply repeat-safe 0003_quest_templates.sql. Do not rerun the manually applied foundation migration.
+
+79 local tests pass, including Cloudflare workerd/Miniflare D1 lifecycle and transaction rollback. Frontend syntax checks and Wrangler bundle dry-run pass. Headless browser testing is incomplete because Chromium is unavailable; live mobile acceptance and deployed-source reconciliation remain required before production cutover. No old data was imported or original application cut over by this commit.

@@ -1,10 +1,10 @@
 name: Backend checks
 on:
   pull_request:
-    paths: ['backend/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
+    paths: ['backend/**', 'frontend/**', 'migration/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
   push:
-    branches: [main]
-    paths: ['backend/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
+    branches: [main, migration/cloudflare-foundation]
+    paths: ['backend/**', 'frontend/**', 'migration/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
 permissions:
   contents: read
 jobs:
@@ -16,5 +16,6 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
+      - run: for file in frontend/*.mjs; do node --check "$file"; done
       - run: npm test
         working-directory: backend
