@@ -1,5 +1,3 @@
--- Initial schema only; no users, passwords, sessions or live data are seeded.
--- Preserve existing sheet IDs; Firebase UID is attached separately during enrollment.
 PRAGMA foreign_keys = ON;
 CREATE TABLE profiles (
   id TEXT PRIMARY KEY,
@@ -58,7 +56,6 @@ CREATE TABLE recap_responses (
   submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (profile_id, idempotency_key)
 );
--- answers_json is an allowlisted answer object, never the entire HTTP request.
 CREATE TABLE xp_awards (
   id TEXT PRIMARY KEY,
   assignment_id TEXT NOT NULL REFERENCES assignments(id),
