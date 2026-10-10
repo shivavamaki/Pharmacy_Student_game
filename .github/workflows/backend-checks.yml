@@ -1,10 +1,10 @@
 name: Backend checks
 on:
   pull_request:
-    paths: ['backend/**', '.github/workflows/backend-checks.yml']
+    paths: ['backend/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
   push:
     branches: [main]
-    paths: ['backend/**', '.github/workflows/backend-checks.yml']
+    paths: ['backend/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
 permissions:
   contents: read
 jobs:
@@ -15,5 +15,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: npm ci
       - run: npm test
         working-directory: backend

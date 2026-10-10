@@ -16,7 +16,7 @@ Use Node.js 24 or later (tests use node:sqlite).
 Run from backend:
     npm test
 
-No dependencies, credentials or network access are needed for these tests. They check worker responses and SQLite constraints; they do not test the Cloudflare D1 runtime or Firebase sign-in.
+Run npm ci from the repository root first to install pinned dependencies. The tests themselves need no credentials or external network access. They check worker responses and SQLite constraints; they do not test the Cloudflare D1 runtime or Firebase sign-in.
 
 ## Next step — development accounts only
 1. Create or use a Cloudflare account on the Free plan.
@@ -73,4 +73,20 @@ The development Worker pharmacy-guild-api-dev is connected to this repository:
 - Deploy command: npx wrangler deploy --cwd backend.
 - Version command: npx wrangler versions upload --cwd backend.
 
-A commit starts the first build. After a successful deployment, check GET /health and confirm the DB binding in Settings. The current scaffold still reports authenticationReady: false and refuses /api/* requests. Deployment of this scaffold does not provide working login or game endpoints. This development deployment leaves the existing Apps Script application in place.
+A commit starts the first build. After a successful deployment, check GET /health and confirm the DB binding in Settings. The foundation deployment was confirmed with GET /health. Step 2 adds Firebase ID-token verification and GET /api/me. It does not yet provide a frontend login or game endpoints. This development deployment leaves the existing Apps Script application in place.
+
+## Step 2 — verified identity and current authorization
+The backend uses pinned jose to verify RS256 signatures using Google's fixed Secure Token X.509 endpoint. Keys follow the response Cache-Control max-age (capped at 24 hours) and are imported once per key/cache interval. Unknown keys can trigger a refresh after a 30-second cooldown. Key fetch/import failures deny access.
+
+Tokens must match project pharmacy-student-game, the exact securetoken issuer, expiry, issued-at time, authentication time, nonempty UID (at most 128 characters), Google sign-in provider, and verified email. GET /api/me reads profiles by verified firebase_uid using a bound SQL parameter on every request. Unregistered, pending and inactive profiles are denied. Role comes from D1, not the JWT's custom role or client fields. No token, password, refresh token or Google access token is saved to D1 or logged by this code.
+
+This verifies signatures/claims, not Firebase server-side revocation. Disabling the D1 profile denies this backend immediately on subsequent requests; Firebase-only disabling/revocation may leave already issued ID tokens valid until expiry. Use D1 status=inactive when disabling game access. Firebase client SDK will manage token refresh in the future login UI; do not send refresh tokens to this API.
+
+Root package.json declares the backend workspace so Cloudflare's root build installs the pinned dependencies from package-lock.json. Existing dashboard deploy command with --cwd backend remains valid. The Worker configuration already supplies the DB binding and Firebase project ID.
+- GET /health: stage=authentication, authenticationReady=true when project ID and DB binding exist. This is a configuration check, not proof of successful live Google login.
+- GET /api/me without Authorization: 401 authentication_required.
+- Verified token without an enrolled active profile: 403 enrollment_required or account_not_active.
+- POST /api/me: 405; other unimplemented API paths: 404.
+- CORS currently permits only http://localhost:5173. Set the exact Pages origin when the frontend is created.
+
+Validation: 33 local tests pass, including generated RS256 tokens and two-account authorization checks; Wrangler bundle dry-run passes. Live Google sign-in, Google's live key retrieval and live D1 profile reads remain to be tested. Next: frontend login and administrator-controlled UID enrollment. Do not import old passwords or grant everyone an admin role.

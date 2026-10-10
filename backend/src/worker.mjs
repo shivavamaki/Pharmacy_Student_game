@@ -1,4 +1,4 @@
-// Phase 1: public health endpoint only. Authentication is intentionally unfinished.
+import { AuthError, authenticate, createTokenVerifier } from './auth.mjs';
 function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), { status, headers: {
     'Content-Type': 'application/json; charset=utf-8',
@@ -7,7 +7,8 @@ function json(body, status = 200, headers = {}) {
     ...headers
   } });
 }
-export default {
+export function createWorker(verifyToken = createTokenVerifier()) {
+return {
   async fetch(request, env = {}) {
     const path = new URL(request.url).pathname;
     const origin = request.headers.get('Origin');
@@ -25,10 +26,19 @@ export default {
     if (path === '/health') {
       if (request.method !== 'GET')
         return json({ error: 'method_not_allowed' }, 405, { ...cors, Allow: 'GET' });
-      return json({ ok: true, stage: 'foundation', authenticationReady: false }, 200, cors);
+      return json({ ok: true, stage: 'authentication', authenticationReady: Boolean(env.FIREBASE_PROJECT_ID && env.DB) }, 200, cors);
     }
-    if (path.startsWith('/api/'))
-      return json({ error: 'authentication_not_configured' }, 503, cors);
+    if (path === '/api/me') {
+      if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, { ...cors, Allow: 'GET' });
+      try {
+        return json({ profile: await authenticate(request, env, verifyToken) }, 200, cors);
+      } catch (error) {
+        if (error instanceof AuthError) return json({ error: error.code }, error.status, cors);
+        return json({ error: 'authentication_unavailable' }, 503, cors);
+      }
+    }
     return json({ error: 'not_found' }, 404, cors);
   }
 };
+}
+export default createWorker();

@@ -4,7 +4,7 @@ import worker from '../src/worker.mjs';
 const run = (path, options, env) => worker.fetch(new Request('https://example.test'+path, options), env);
 test('health reports authentication is unfinished', async () => {
   const r=await run('/health'); assert.equal(r.status,200);
-  assert.deepEqual(await r.json(),{ok:true,stage:'foundation',authenticationReady:false});
+  assert.deepEqual(await r.json(),{ok:true,stage:'authentication',authenticationReady:false});
 });
 test('protected routes cannot accept an arbitrary bearer token', async () => {
   const r=await run('/api/me',{headers:{Authorization:'Bearer forged'}});

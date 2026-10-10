@@ -1,0 +1,8 @@
+{
+  "name": "pharmacy-student-game",
+  "private": true,
+  "workspaces": ["backend"],
+  "scripts": {
+    "test": "npm test --workspace backend"
+  }
+}
