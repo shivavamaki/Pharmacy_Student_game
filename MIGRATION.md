@@ -70,8 +70,8 @@ The development Worker pharmacy-guild-api-dev is connected to this repository:
 - Production branch (for this development Worker): migration/cloudflare-foundation.
 - Root directory: /.
 - Build command: empty.
-- Deploy command: npx wrangler deploy --cwd backend.
-- Version command: npx wrangler versions upload --cwd backend.
+- Deploy command: npm run deploy --workspace backend.
+- Version command: npm exec --workspace backend -- wrangler versions upload.
 
 A commit starts the first build. After a successful deployment, check GET /health and confirm the DB binding in Settings. The foundation deployment was confirmed with GET /health. Step 2 adds Firebase ID-token verification and GET /api/me. It does not yet provide a frontend login or game endpoints. This development deployment leaves the existing Apps Script application in place.
 
@@ -82,11 +82,29 @@ Tokens must match project pharmacy-student-game, the exact securetoken issuer, e
 
 This verifies signatures/claims, not Firebase server-side revocation. Disabling the D1 profile denies this backend immediately on subsequent requests; Firebase-only disabling/revocation may leave already issued ID tokens valid until expiry. Use D1 status=inactive when disabling game access. Firebase client SDK will manage token refresh in the future login UI; do not send refresh tokens to this API.
 
-Root package.json declares the backend workspace so Cloudflare's root build installs the pinned dependencies from package-lock.json. Existing dashboard deploy command with --cwd backend remains valid. The Worker configuration already supplies the DB binding and Firebase project ID.
+Root package.json declares the backend workspace so Cloudflare's root build installs the pinned dependencies from package-lock.json. Use npm run deploy --workspace backend so npm resolves the workspace-local Wrangler binary. The Worker configuration already supplies the DB binding and Firebase project ID.
 - GET /health: stage=authentication, authenticationReady=true when project ID and DB binding exist. This is a configuration check, not proof of successful live Google login.
 - GET /api/me without Authorization: 401 authentication_required.
 - Verified token without an enrolled active profile: 403 enrollment_required or account_not_active.
 - POST /api/me: 405; other unimplemented API paths: 404.
-- CORS currently permits only http://localhost:5173. Set the exact Pages origin when the frontend is created.
+- CORS permits the exact development Worker origin for the same-host auth test. Set the exact Pages origin when the game frontend is created.
 
 Validation: 33 local tests pass, including generated RS256 tokens and two-account authorization checks; Wrangler bundle dry-run passes. Live Google sign-in, Google's live key retrieval and live D1 profile reads remain to be tested. Next: frontend login and administrator-controlled UID enrollment. Do not import old passwords or grant everyone an admin role.
+
+## Step 2a — live sign-in diagnostic
+A temporary GET /auth-test page is served only when APP_ENV=development, on:
+https://pharmacy-guild-api-dev.shivavamaki.workers.dev/auth-test
+
+The owner confirmed the Worker URL and /api/me returns authentication_required without a token. The diagnostic uses Firebase browser modules pinned to 12.19.0, Google popup sign-in and in-memory persistence. It sends only the Firebase ID token to the same-origin /api/me route. It displays email, UID and the safe API result; it does not display or log tokens, save profiles, or assign roles. Reload requires sign-in again.
+
+Before testing:
+1. Wait for the new Worker build to be Ready.
+2. Firebase Authentication → Settings → Authorized domains → Add domain: pharmacy-guild-api-dev.shivavamaki.workers.dev (no protocol or path).
+3. Open /auth-test in a normal browser and press Sign in with Google.
+4. With the empty profiles table, expect enrollment_required. This proves token verification reached the D1 lookup; it does not yet prove enrolled access.
+5. Verify the intended Firebase user in Authentication → Users before manually enrolling its UID in the development database. Plan and review the enrollment separately. Never automatically grant the first visitor admin access.
+6. Retry profile check after enrollment; expect the enrolled profile. Test pending/inactive and a second account before connecting game features.
+
+The page is temporary diagnostics, not the migrated game frontend. Same-host testing avoids needing a Pages deployment yet. Local development needs an ALLOWED_ORIGIN override for its exact local origin.
+
+Validation for this addition: JavaScript syntax checked in code mode. Full Node test suite and Wrangler dry-run could not be rerun because the shell execution service was disconnected. The preceding backend revision passed 33 tests. Live popup, SDK loading/CSP, Google key retrieval and D1 lookup still require the owner browser test.
