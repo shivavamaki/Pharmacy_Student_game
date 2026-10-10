@@ -1,5 +1,5 @@
 import { firebaseConfig } from './firebase-config.mjs';
-import { getMyProfile, getMyParties } from './api-client.mjs';
+import { getMyProfile, getMyParties, getPartyAssignments } from './api-client.mjs';
 const $ = id => document.getElementById(id);
 const login = $('login'), logout = $('logout'), retry = $('retry');
 const message = $('message'), welcome = $('welcome');
@@ -19,7 +19,31 @@ const messages = {
 function errorMessage(error) {
   message.textContent = messages[error.code] || 'เชื่อมต่อระบบไม่สำเร็จ กรุณาลองใหม่';
 }
-function renderParties(data) {
+
+function renderAssignments(data) {
+  const statuses = { waiting_gm_approval:'รอ GM อนุมัติ', in_progress:'กำลังดำเนินการ', waiting_gm_review:'รอ GM ตรวจ', revision_required:'ต้องแก้ไข', completed:'เสร็จสิ้น' };
+  const risks = {green:'ปกติ',yellow:'เฝ้าระวัง',red:'ต้องติดตาม'};
+  const list = $('assignment-list');
+  list.replaceChildren();
+  for(const assignment of data.assignments) {
+    const card = document.createElement('li');
+    const title = document.createElement('h4'); title.textContent = assignment.questName;
+    const objective = document.createElement('p'); objective.textContent = assignment.objective || 'ยังไม่ได้ระบุเป้าหมาย';
+    const state = document.createElement('p'); state.textContent = statuses[assignment.status] + ' · ความเสี่ยง: ' + risks[assignment.risk];
+    const progress = document.createElement('progress');
+    progress.max = 100; progress.value = assignment.progress;
+    progress.setAttribute('aria-label', assignment.questName + ' ความคืบหน้า ' + assignment.progress + '%');
+    const detail = document.createElement('p'); detail.textContent = 'ความคืบหน้า ' + assignment.progress + '% · รางวัลเมื่ออนุมัติ ' + assignment.xpReward + ' XP';
+    card.append(title, objective, state, progress, detail);
+    if(assignment.deadline) { const deadline = document.createElement('p'); deadline.textContent = 'กำหนดส่ง: ' + assignment.deadline; card.append(deadline); }
+    list.append(card);
+  }
+  $('assignment-status').textContent = data.assignments.length
+    ? (data.hasMore ? 'แสดง 100 ภารกิจแรก' : data.assignments.length + ' ภารกิจ')
+    : 'ยังไม่มีภารกิจที่มอบหมายให้ทีมนี้';
+}
+
+function renderParties(data, onSelect) {
   const list = $('party-list');
   list.replaceChildren();
   for (const party of data.parties) {
@@ -28,7 +52,11 @@ function renderParties(data) {
     title.textContent = party.name;
     const detail = document.createElement('p');
     detail.textContent = [party.rotation, party.gmName ? 'GM: ' + party.gmName : null].filter(Boolean).join(' · ') || 'ยังไม่ได้ระบุรายละเอียด';
-    item.append(title, detail);
+    const open = document.createElement('button');
+    open.className = 'secondary';
+    open.textContent = 'ดูภารกิจ';
+    open.addEventListener('click', () => onSelect(party));
+    item.append(title, detail, open);
     list.append(item);
   }
   $('party-status').textContent = data.parties.length
@@ -46,9 +74,34 @@ try {
   provider.setCustomParameters({ prompt: 'select_account' });
   let generation = 0;
   let controller;
+  let assignmentController;
+  let assignmentGeneration = 0;
+  async function loadAssignments(user, party) {
+    const current = generation;
+    const selection = ++assignmentGeneration;
+    assignmentController?.abort();
+    const requestController = new AbortController();
+    assignmentController = requestController;
+    const timeout = setTimeout(() => requestController.abort(), 15000);
+    $('assignments').hidden = false;
+    $('assignment-title').textContent = 'ภารกิจ · ' + party.name;
+    $('assignment-list').replaceChildren();
+    $('assignment-status').textContent = 'กำลังโหลดภารกิจ…';
+    try {
+      const data = await getPartyAssignments(user, party.id, { signal: requestController.signal });
+      if (current !== generation || selection !== assignmentGeneration || auth.currentUser !== user) return;
+      renderAssignments(data);
+    } catch (error) {
+      if (current === generation && selection === assignmentGeneration && auth.currentUser === user)
+        $('assignment-status').textContent = error.code === 'not_found' ? 'ไม่พบปาร์ตี้ หรือสิทธิ์ของคุณเปลี่ยนไปแล้ว' : 'โหลดภารกิจไม่สำเร็จ กรุณากดดูภารกิจอีกครั้ง';
+    } finally { clearTimeout(timeout); }
+  }
   async function loadProfile(user) {
     const current = ++generation;
     controller?.abort();
+    assignmentController?.abort();
+    $('assignments').hidden = true;
+    $('assignment-list').replaceChildren();
     const requestController = new AbortController();
     controller = requestController;
     const timeout = setTimeout(() => requestController.abort(), 15000);
@@ -69,7 +122,7 @@ try {
       try {
         const data = await getMyParties(user, { signal: requestController.signal });
         if (current !== generation || auth.currentUser !== user) return;
-        renderParties(data);
+        renderParties(data, party => void loadAssignments(user, party));
       } catch {
         if (current === generation && auth.currentUser === user)
           $('party-status').textContent = 'โหลดปาร์ตี้ไม่สำเร็จ กดตรวจสิทธิ์อีกครั้งเพื่อลองใหม่';
@@ -84,6 +137,9 @@ try {
   sdk.onAuthStateChanged(auth, user => {
     ++generation;
     controller?.abort();
+    assignmentController?.abort();
+    $('assignments').hidden = true;
+    $('assignment-list').replaceChildren();
     welcome.hidden = true;
     $('party-list').replaceChildren();
     $('party-status').textContent = '';

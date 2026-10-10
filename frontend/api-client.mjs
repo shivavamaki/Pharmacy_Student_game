@@ -38,3 +38,23 @@ export async function getMyParties(user, { fetcher = fetch, signal } = {}) {
     throw new ApiError('invalid_response', response.status);
   return data;
 }
+
+export async function getPartyAssignments(user, partyId, { fetcher = fetch, signal } = {}) {
+  if (!user) throw new ApiError('authentication_required',401);
+  const token = await user.getIdToken();
+  const response = await fetcher(API_ORIGIN + '/api/parties/' + encodeURIComponent(partyId) + '/assignments', {
+    headers: { Authorization: 'Bearer ' + token }, cache: 'no-store', credentials: 'omit', redirect: 'error', signal
+  });
+  let data;
+  try { data = await response.json(); } catch { throw new ApiError('invalid_response', response.status); }
+  if(!response.ok) throw new ApiError(data.error || 'request_failed', response.status);
+  if(!Array.isArray(data.assignments) || typeof data.hasMore !== 'boolean' ||
+    data.assignments.some(a => !a || typeof a.id !== 'string' || typeof a.questName !== 'string' ||
+      !(a.objective === null || typeof a.objective === 'string') ||
+      !Number.isInteger(a.progress) || a.progress < 0 || a.progress > 100 ||
+      !Number.isInteger(a.xpReward) || a.xpReward < 0 ||
+      !['waiting_gm_approval','in_progress','waiting_gm_review','revision_required','completed'].includes(a.status) ||
+      !['green','yellow','red'].includes(a.risk) || !(a.deadline === null || typeof a.deadline === 'string')))
+    throw new ApiError('invalid_response',response.status);
+  return data;
+}

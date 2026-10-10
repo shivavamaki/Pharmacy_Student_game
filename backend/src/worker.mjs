@@ -1,4 +1,5 @@
 import { AuthError, authenticate, createTokenVerifier } from './auth.mjs';
+import { listAssignments } from './assignments.mjs';
 import { listParties } from './parties.mjs';
 import { authTestHtml } from './auth-test.mjs';
 function json(body, status = 200, headers = {}) {
@@ -41,10 +42,18 @@ return {
         return json({ error: 'method_not_allowed' }, 405, { ...cors, Allow: 'GET' });
       return json({ ok: true, stage: 'authentication', authenticationReady: Boolean(env.FIREBASE_PROJECT_ID && env.DB) }, 200, cors);
     }
-    if (path === '/api/me' || path === '/api/parties') {
+    const assignmentRoute = /^\/api\/parties\/([^/]+)\/assignments$/.exec(path);
+    if (path === '/api/me' || path === '/api/parties' || assignmentRoute) {
       if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, { ...cors, Allow: 'GET' });
       try {
         const profile = await authenticate(request, env, verifyToken);
+        if (assignmentRoute) {
+          let partyId;
+          try { partyId = decodeURIComponent(assignmentRoute[1]); }
+          catch { throw new AuthError('invalid_request', 400); }
+          if (!partyId || partyId.length > 256) throw new AuthError('invalid_request', 400);
+          return json(await listAssignments(profile, env.DB, partyId), 200, cors);
+        }
         return json(path === '/api/me' ? { profile } : await listParties(profile, env.DB), 200, cors);
       } catch (error) {
         if (error instanceof AuthError) return json({ error: error.code,
