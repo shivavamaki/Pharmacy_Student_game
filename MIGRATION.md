@@ -32,7 +32,7 @@ No dependencies, credentials or network access are needed for these tests. They 
     npm run db:local
     npm run dev
 
-Remote migration and deployment come after token verification and enrollment tests; this guide intentionally does not deploy or connect production.
+The owner has now created the development schema manually and authorized a foundation Worker deployment through dashboard Git integration (see the setup record below). Token verification and enrollment tests remain required before connecting any game data or cutting over production.
 
 ## Implementation milestones
 - Step 2: Firebase ID-token signature, issuer, audience, expiry and subject verification. Reject unregistered, inactive or pending profiles using D1 state on every request. Add /api/me and two-account permission tests.
@@ -62,3 +62,15 @@ Use separate dev/production projects and databases. Keep schema changes in migra
 - https://developers.cloudflare.com/d1/reference/migrations/
 - https://firebase.google.com/docs/auth/admin/verify-id-tokens
 - https://firebase.google.com/docs/projects/billing/firebase-pricing-plans
+
+## Development dashboard setup — 2026-10-10
+The owner enabled Firebase Google sign-in and created pharmacy-guild-dev. A D1 Console screenshot confirms all eight foundation table names; column definitions and indexes have not yet been independently checked remotely. The schema was applied manually, so Wrangler migration history has not been recorded. Do not rerun 0001 against this database blindly; reconcile and baseline its migration history before automated remote migrations.
+
+The development Worker pharmacy-guild-api-dev is connected to this repository:
+- Production branch (for this development Worker): migration/cloudflare-foundation.
+- Root directory: /.
+- Build command: empty.
+- Deploy command: npx wrangler deploy --cwd backend.
+- Version command: npx wrangler versions upload --cwd backend.
+
+A commit starts the first build. After a successful deployment, check GET /health and confirm the DB binding in Settings. The current scaffold still reports authenticationReady: false and refuses /api/* requests. Deployment of this scaffold does not provide working login or game endpoints. This development deployment leaves the existing Apps Script application in place.
