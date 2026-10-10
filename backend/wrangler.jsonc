@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "pharmacy-guild-dev",
-      "database_id": "REPLACE_WITH_DEV_DATABASE_ID",
+      "database_id": "708095f3-f6b2-4931-9205-cd0422ba0932",
       "migrations_dir": "migrations"
     }
   ]
