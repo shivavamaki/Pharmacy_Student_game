@@ -1,5 +1,5 @@
 import { firebaseConfig } from './firebase-config.mjs';
-import { getMyProfile } from './api-client.mjs';
+import { getMyProfile, getMyParties } from './api-client.mjs';
 const $ = id => document.getElementById(id);
 const login = $('login'), logout = $('logout'), retry = $('retry');
 const message = $('message'), welcome = $('welcome');
@@ -18,6 +18,22 @@ const messages = {
 };
 function errorMessage(error) {
   message.textContent = messages[error.code] || 'เชื่อมต่อระบบไม่สำเร็จ กรุณาลองใหม่';
+}
+function renderParties(data) {
+  const list = $('party-list');
+  list.replaceChildren();
+  for (const party of data.parties) {
+    const item = document.createElement('li');
+    const title = document.createElement('h4');
+    title.textContent = party.name;
+    const detail = document.createElement('p');
+    detail.textContent = [party.rotation, party.gmName ? 'GM: ' + party.gmName : null].filter(Boolean).join(' · ') || 'ยังไม่ได้ระบุรายละเอียด';
+    item.append(title, detail);
+    list.append(item);
+  }
+  $('party-status').textContent = data.parties.length
+    ? (data.hasMore ? 'แสดง 100 ปาร์ตี้แรก' : data.parties.length + ' ปาร์ตี้')
+    : 'ยังไม่มีปาร์ตี้ที่เข้าถึงได้';
 }
 try {
   const [appSDK, sdk] = await Promise.all([
@@ -38,6 +54,8 @@ try {
     const timeout = setTimeout(() => requestController.abort(), 15000);
     retry.disabled = true;
     welcome.hidden = true;
+    $('party-list').replaceChildren();
+    $('party-status').textContent = '';
     message.textContent = 'กำลังตรวจสิทธิ์เข้าใช้งาน…';
     try {
       const profile = await getMyProfile(user, { signal: requestController.signal });
@@ -46,6 +64,16 @@ try {
       $('role').textContent = labels[profile.role];
       welcome.hidden = false;
       message.textContent = 'เข้าสู่ระบบเรียบร้อย';
+      $('party-title').textContent = profile.role === 'admin' ? 'ปาร์ตี้ทั้งหมด' : 'ปาร์ตี้ของฉัน';
+      $('party-status').textContent = 'กำลังโหลดปาร์ตี้…';
+      try {
+        const data = await getMyParties(user, { signal: requestController.signal });
+        if (current !== generation || auth.currentUser !== user) return;
+        renderParties(data);
+      } catch {
+        if (current === generation && auth.currentUser === user)
+          $('party-status').textContent = 'โหลดปาร์ตี้ไม่สำเร็จ กดตรวจสิทธิ์อีกครั้งเพื่อลองใหม่';
+      }
     } catch (error) {
       if (current === generation && auth.currentUser === user) errorMessage(error);
     } finally {
@@ -57,6 +85,8 @@ try {
     ++generation;
     controller?.abort();
     welcome.hidden = true;
+    $('party-list').replaceChildren();
+    $('party-status').textContent = '';
     login.hidden = Boolean(user);
     logout.hidden = !user;
     retry.hidden = !user;

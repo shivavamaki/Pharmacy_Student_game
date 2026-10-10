@@ -136,3 +136,14 @@ After the deployment succeeds, record the actual stable https://<project>.pages.
 The original Apps Script app remains the live game. Final game screens should follow the reconciled source/design. This commit establishes only the separate development entry page and shared read-only API client. Next: scoped party/assignment read endpoints and student/GM authorization checks.
 
 Validation: API client tests cover the fixed destination and ID-token header, signed-out prevention, enrollment/status denial, malformed responses and non-JSON failures. Full backend tests and frontend module syntax checks run locally. Pages deploy, CSP/popup and cross-origin login must still be checked on the actual Pages domain.
+
+## Step 3b — scoped party list
+The owner confirmed Google login and the Madeaw admin welcome on the stable Pages domain https://pharmacy-guild-web-dev.pages.dev. The development Worker ALLOWED_ORIGIN now matches that exact origin.
+
+GET /api/parties authenticates the Firebase token and current active D1 profile before querying parties. Admins see all active parties; GMs see active parties they are assigned to manage or belong to; students and preceptors see active memberships only. A party's gm_profile_id alone never gives a student GM visibility. Archived parties are excluded. Query parameters cannot select another profile or override a role. The response contains only party ID, name, rotation and GM display name, with no member emails/UIDs. Results are ordered and capped at 100; hasMore indicates truncation. Pagination and party creation UI are later work.
+
+The Pages welcome loads this real endpoint, renders strings with textContent and shows an actual empty state when no party is visible. Sign-out/account switching removes the old list. Database errors do not show raw SQL or upstream details. POST is denied. No production data has been imported.
+
+Validation: real SQLite schema-backed tests cover admin/GM/student/preceptor scope, archived filtering, query-role spoofing, membership removal, inactive users, missing identity, denied writes, list bounds and database failure. Browser client tests cover token destination, empty results, denials and malformed responses. Frontend module syntax and the full local suite pass. Live party reads from D1/Pages still need owner verification after the builds are Ready.
+
+Optional development-only test data: manually create one clearly named test party in pharmacy-guild-dev using D1 Console, then refresh the Pages welcome. Do not run foundation migrations again or mix test rows with an eventual production import. Next: scoped assignment/quest reads for each visible party, then administrative party management.

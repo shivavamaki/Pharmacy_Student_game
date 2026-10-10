@@ -19,3 +19,22 @@ export async function getMyProfile(user, { fetcher = fetch, signal } = {}) {
     throw new ApiError('invalid_response', response.status);
   return profile;
 }
+
+export async function getMyParties(user, { fetcher = fetch, signal } = {}) {
+  if (!user) throw new ApiError('authentication_required', 401);
+  const token = await user.getIdToken();
+  const response = await fetcher(API_ORIGIN + '/api/parties', {
+    method: 'GET', headers: { Authorization: 'Bearer ' + token },
+    cache: 'no-store', credentials: 'omit', redirect: 'error', signal
+  });
+  let data;
+  try { data = await response.json(); }
+  catch { throw new ApiError('invalid_response', response.status); }
+  if (!response.ok) throw new ApiError(data.error || 'request_failed', response.status);
+  if (!Array.isArray(data.parties) || typeof data.hasMore !== 'boolean' ||
+      data.parties.some(p => !p || typeof p.id !== 'string' || typeof p.name !== 'string' ||
+        !(p.rotation === null || typeof p.rotation === 'string') ||
+        !(p.gmName === null || typeof p.gmName === 'string')))
+    throw new ApiError('invalid_response', response.status);
+  return data;
+}

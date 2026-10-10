@@ -1,4 +1,5 @@
 import { AuthError, authenticate, createTokenVerifier } from './auth.mjs';
+import { listParties } from './parties.mjs';
 import { authTestHtml } from './auth-test.mjs';
 function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), { status, headers: {
@@ -40,10 +41,11 @@ return {
         return json({ error: 'method_not_allowed' }, 405, { ...cors, Allow: 'GET' });
       return json({ ok: true, stage: 'authentication', authenticationReady: Boolean(env.FIREBASE_PROJECT_ID && env.DB) }, 200, cors);
     }
-    if (path === '/api/me') {
+    if (path === '/api/me' || path === '/api/parties') {
       if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, { ...cors, Allow: 'GET' });
       try {
-        return json({ profile: await authenticate(request, env, verifyToken) }, 200, cors);
+        const profile = await authenticate(request, env, verifyToken);
+        return json(path === '/api/me' ? { profile } : await listParties(profile, env.DB), 200, cors);
       } catch (error) {
         if (error instanceof AuthError) return json({ error: error.code,
           ...(env.APP_ENV === 'development' && error.stage ? { stage: error.stage } : {})
