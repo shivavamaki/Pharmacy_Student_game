@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light"><meta name="theme-color" content="#183e39">
+<title>Pharmacy Guild</title>
+<link rel="icon" href="data:,"><link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header><a class="brand" href="/" aria-label="Pharmacy Guild หน้าหลัก"><span class="crest" aria-hidden="true">✚</span><span>PHARMACY<br><strong>GUILD</strong></span></a><span class="tag">พื้นที่ทดลอง</span></header>
+<main>
+<section class="intro"><p class="eyebrow">LEARN · COLLABORATE · GROW</p><h1>เติบโตไปด้วยกัน<br>ในเส้นทางเภสัชกร</h1><p class="lead">พื้นที่เรียนรู้สำหรับนักศึกษาและอาจารย์<br>รวมทีม ทำภารกิจ และพัฒนาทักษะผ่านการฝึกงาน</p><div class="journey" aria-hidden="true"><span>01<br><b>รวมทีม</b></span><span>02<br><b>เรียนรู้</b></span><span>03<br><b>เติบโต</b></span></div></section>
+<section class="card" aria-labelledby="signin-heading">
+<p class="eyebrow">YOUR GUILD</p><h2 id="signin-heading">ยินดีต้อนรับ</h2><p>เข้าสู่ระบบเพื่อเริ่มต้นการเรียนรู้</p>
+<button id="login" disabled>Sign in with Google <span aria-hidden="true">→</span></button>
+<p id="message" role="status" aria-live="polite">กำลังเตรียมหน้าเข้าสู่ระบบ…</p>
+<section id="welcome" hidden><div class="member"><span class="avatar" aria-hidden="true">✚</span><div><h3 id="name"></h3><span id="role" class="role"></span></div></div><div class="next"><h3>ก้าวต่อไปของ Guild</h3><p>พื้นที่ปาร์ตี้และภารกิจกำลังอยู่ระหว่างการเตรียมพร้อม</p></div></section>
+<div class="actions"><button id="retry" class="secondary" hidden>ตรวจสิทธิ์อีกครั้ง</button><button id="logout" class="secondary" hidden>ออกจากระบบ</button></div>
+<p id="session-note" class="note">ใช้บัญชี Google ที่ลงทะเบียนกับผู้ดูแล<br>เมื่อโหลดหน้าใหม่ กรุณาเข้าสู่ระบบอีกครั้ง</p>
+</section>
+</main>
+<footer>Pharmacy Guild · พื้นที่เรียนรู้และเติบโตไปด้วยกัน</footer>
+<script type="module" src="/app.mjs"></script>
+</body></html>

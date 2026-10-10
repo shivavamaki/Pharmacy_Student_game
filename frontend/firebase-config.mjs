@@ -1,6 +1,6 @@
 // Firebase browser configuration supplied by the project owner.
 // This module only exports configuration; it does not initialize Analytics or Storage.
-// Authentication will be wired in the next migration step.
+// Used by the Pages login UI; only Firebase Authentication is initialized.
 export const firebaseConfig = Object.freeze({
   "apiKey": "AIzaSyCT3T2vtfMpBYFWBp0T4ZmD3DESk7fs2nY",
   "authDomain": "pharmacy-student-game.firebaseapp.com",

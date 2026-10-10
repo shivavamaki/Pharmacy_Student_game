@@ -108,3 +108,31 @@ Before testing:
 The page is temporary diagnostics, not the migrated game frontend. Same-host testing avoids needing a Pages deployment yet. Local development needs an ALLOWED_ORIGIN override for its exact local origin.
 
 Validation for this addition: JavaScript syntax checked in code mode. Full Node test suite and Wrangler dry-run could not be rerun because the shell execution service was disconnected. The preceding backend revision passed 33 tests. Live popup, SDK loading/CSP, Google key retrieval and D1 lookup still require the owner browser test.
+
+## Confirmed authentication milestone — 2026-10-10
+The owner browser confirmed Firebase Google login, live Google public-key retrieval/signature verification and D1 lookup. After administrator-managed enrollment, /api/me returned the expected Madeaw admin profile on mobile. No user credentials were imported. PC Google domains are blocked by the owner's managed proxy; mobile testing uses an allowed network.
+
+Cloudflare workerd rejects redirect:error at runtime, even though Node accepts it. Google key fetching now uses redirect:manual and rejects non-2xx responses, including redirects. A workerd runtime probe reproduced the original failure and accepted manual mode; the local backend test suite passes. Development responses include only a fixed safe failure stage when key fetch/import or D1 lookup fails.
+
+## Step 3a — Pages login and member welcome
+frontend/ now contains a static Pages login/welcome site. It uses the existing Firebase browser configuration and pinned Authentication CDN modules, with in-memory persistence. Google popup login is followed by GET /api/me on the fixed development Worker origin. Name and role are shown only after the backend accepts the account. Sign-out and account changes clear the displayed profile. There are no game data endpoints or fabricated party/quest/XP records in this step.
+
+Create a separate Cloudflare Pages project:
+- Project name: pharmacy-guild-web-dev (or an available development name).
+- Repository: shivavamaki/Pharmacy_Student_game.
+- Production branch: migration/cloudflare-foundation.
+- Framework preset: None.
+- Root directory: /.
+- Build command: exit 0.
+- Build output directory: frontend.
+
+After the deployment succeeds, record the actual stable https://<project>.pages.dev URL. Then:
+1. Add its exact hostname to Firebase Authentication → Settings → Authorized domains.
+2. Change backend/wrangler.jsonc ALLOWED_ORIGIN to that exact HTTPS origin and deploy the Worker. No wildcard origins or unreviewed previews.
+3. Open the stable Pages URL and test Google login, the expected Madeaw role and sign-out on mobile.
+4. Test a second account is denied until explicitly enrolled; test pending/inactive denial before adding party or quest endpoints.
+5. Pages previews are not authorized automatically. The same-host /auth-test route will remain development-only; once ALLOWED_ORIGIN becomes Pages, its browser-origin API calls may be denied. Use the Pages UI for normal testing.
+
+The original Apps Script app remains the live game. Final game screens should follow the reconciled source/design. This commit establishes only the separate development entry page and shared read-only API client. Next: scoped party/assignment read endpoints and student/GM authorization checks.
+
+Validation: API client tests cover the fixed destination and ID-token header, signed-out prevention, enrollment/status denial, malformed responses and non-JSON failures. Full backend tests and frontend module syntax checks run locally. Pages deploy, CSP/popup and cross-origin login must still be checked on the actual Pages domain.
