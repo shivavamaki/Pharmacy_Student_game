@@ -1,3 +1,4 @@
+import {campaignQuestIds,campaignGuard} from './campaign.mjs';
 import { AuthError } from './auth.mjs';
 export async function listAssignments(profile, db, partyId) {
   try {
@@ -8,11 +9,13 @@ export async function listAssignments(profile, db, partyId) {
         ) OR (? IN ('gm','preceptor') AND p.gm_profile_id = ?)
       )`).bind(partyId, profile.role, profile.id, profile.role, profile.id).first();
     if (!party) throw new AuthError('not_found', 404);
+    const gateArgs=[];const gates=campaignQuestIds.map(id=>{const gate=campaignGuard(id,partyId);gateArgs.push(id,...gate.args);return `(q.id=? AND (${gate.sql}))`;});
+    const gate=profile.role==='student'?`AND (q.id NOT IN (${campaignQuestIds.map(()=>'?').join(',')}) OR ${gates.join(' OR ')})`:'';
     const { results } = await db.prepare(`SELECT a.id, q.name AS quest_name, q.objective,
       q.xp_reward, a.status, a.progress, a.risk, a.deadline
       FROM assignments a JOIN quests q ON q.id = a.quest_id
-      WHERE a.party_id = ? AND a.status != 'archived' AND q.status != 'archived'
-      ORDER BY a.created_at, a.id LIMIT 101`).bind(partyId).all();
+      WHERE a.party_id = ? AND a.status != 'archived' AND q.status != 'archived' ${gate}
+      ORDER BY a.created_at, a.id LIMIT 101`).bind(partyId,...(profile.role==='student'?[...campaignQuestIds,...gateArgs]:[])).all();
     if (!Array.isArray(results)) throw new Error('invalid result');
     return { assignments: results.slice(0,100).map(row => ({
       id: row.id, questName: row.quest_name, objective: row.objective,

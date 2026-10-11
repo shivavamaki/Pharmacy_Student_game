@@ -1,17 +1,19 @@
 # Weekly main quests, SOAP boss, and two project quests
 
-The quest board separates Main Quest, Boss Fight, Side Quest, and existing templates. Existing D1 quest rows, assignments, XP, and evidence are preserved. Nothing is deleted or archived automatically. The existing-template filter shows quests whose IDs are outside the supplied eight-template curriculum, including other custom templates.
+The quest board separates Main Quest, Boss Fight, Side Quest, and existing templates. Existing D1 quest rows, assignments, XP, and evidence are preserved. Nothing is deleted or archived automatically. The existing-template filter shows quests whose IDs are outside the supplied ten-template curriculum, including other custom templates.
 
 ## Curriculum
 
 | Type | Template | Required work for GM review |
 | --- | --- | --- |
-| Main, week 1 | Lecture & Foundations | Lecture/workshop/discussion participation record, reflection journal, short quiz |
-| Main, week 2 | OPD Practice | Practice participation record, case presentation, SOAP note |
-| Main, week 3 | Inpatient Ward Training | Ward-round/case-discussion participation record, clinical case report |
-| Main, week 4 | IV Admixture & Special Medications | Simulation/supervised-practice participation record, project development work |
+| Main, week 1 | Training Ground | Lecture/workshop/discussion participation record, reflection journal, short quiz |
+| Main, week 2 | Outpost Dungeon | Practice participation record, case presentation, SOAP note |
+| Main, week 3 | Infinite Portal Device | Ward-round/case-discussion participation record, clinical case report |
+| Main, week 4 | Time Chamber / Library of the Brave / Pilgrimage Wanderer | IV simulation, stock management, ward-round participation records, project development work |
 | Main, week 5 | Integration & Final Presentation | Final-presentation/peer-review participation record, both completed project reports |
-| Boss | SOAP Presentation | S/O/A/P case presentation, presentation materials, presentation record and GM feedback |
+| Boss | Sovereign of All Plagues (SOAP) | S/O/A/P case presentation, presentation materials, presentation record and GM feedback |
+| Mini boss | The Forgekeeper | Both project presentations and GM feedback |
+| Mini boss | The Keeper of Knowledge | Academic in-service presentation and GM feedback |
 | Side, project 1 | Department improvement | Project report and presentation |
 | Side, project 2 | Clinical improvement | Project report, clinical implementation plan, and presentation |
 
@@ -19,12 +21,14 @@ Both Side Quests are required projects for the rotation, despite their game labe
 
 ## Install and review
 
-1. Deploy Pages from the migration branch, output `frontend`. There is no Worker or D1 schema change.
-2. Madeaw opens **จัดการ → เพิ่มชุดเควสต์หลักสูตร 5 สัปดาห์**.
-3. The client reads the existing templates and adds only missing curriculum IDs through the existing authenticated admin API. Existing IDs are skipped; partial installations can be retried. If the list exceeds 100 templates, installation stops for review.
-4. Review and edit each template in **แม่แบบภารกิจ**. Existing templates, including locked/archived entries, remain listed there. Review them before choosing to change their status.
+1. Deploy **Worker** from `migration/cloudflare-foundation` first, then deploy **Pages** with output `frontend`. No new D1 schema migration is needed.
+2. Madeaw opens **จัดการ → ติดตั้ง / อัปเดตแคมเปญ 5 สัปดาห์**.
+3. The installer adds missing campaign IDs and updates the ten known curriculum briefs, preserving existing XP, status, badge and deadline settings. It never touches other IDs. Partial installs can be retried. More than 100 templates stops installation for review.
+4. Review each template in **แม่แบบภารกิจ**. Existing assignments retain their accepted reward snapshots.
 
-The templates start available. Weekly unlocking and progression dependencies are not implemented. Accept the appropriate weekly quest when the relevant activities begin. Default XP is a configurable design choice: 100 per main quest, 200 for the boss, and 250 per project. Default deadlines are 7 days after accepting a main/boss quest and 35 days after accepting a project; they are not derived from cohort dates.
+Progression is enforced by the Worker per party. A GM must review evidence and mark the current assignment completed to open the next stage. Approval to start and progress percentage alone do not unlock it. The default path is Training → OPD → IPD → the three week-four practice areas → project mini boss → academic mini boss → SOAP → final integration. Both side projects open after Training and must be completed before accepting the project mini boss. All three week-four locations open together and are reviewed under the same weekly Main Quest. Future narrative is omitted from the campaign response, and future campaign quests/assignments are hidden from students. Legacy quest IDs remain independent. See [campaign-artwork.md](campaign-artwork.md).
+
+Defaults are configurable: Main 100 XP, each boss 200 XP, each project 250 XP; 7-day main/boss and 35-day project deadlines measured from acceptance, not cohort dates. Only SOAP has the default SOAP Champion badge.
 
 Attendance is reviewed by the GM from participation evidence. The requirements list describes what the GM must check; it is not an automatic per-student attendance register or a machine-enforced checklist. The existing Worker continues to require at least one approved evidence record and no outstanding evidence before awarding XP. Rewards still use the participants and rewards captured when the team accepts the quest.
 

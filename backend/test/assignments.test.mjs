@@ -90,3 +90,5 @@ test('Pages assignment client encodes the selected party and sends only its ID t
   await assert.rejects(()=>getPartyAssignments(user,'a',{fetcher:async()=>Response.json({error:'not_found'},{status:404})}),{code:'not_found'});
   await assert.rejects(()=>getPartyAssignments(user,'a',{fetcher:async()=>Response.json({assignments:[{id:'x'}],hasMore:false})}),{code:'invalid_response'});
 });
+
+test('student legacy assignment endpoint also excludes locked campaign quests',async()=>{const f=fixture();try{f.sql.exec("INSERT INTO quests(id,name,status) VALUES('boss-soap-presentation','Spoiler','available');INSERT INTO assignments(id,quest_id,party_id) VALUES('future','boss-soap-presentation','a')");assert.deepEqual((await(await f.request('one')).json()).assignments.map(a=>a.id),['aa']);assert.ok((await(await f.request('gm')).json()).assignments.some(a=>a.id==='future'));}finally{f.sql.close();}});

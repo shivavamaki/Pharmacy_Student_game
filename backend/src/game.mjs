@@ -1,3 +1,4 @@
+import {campaignPrerequisites,campaignRequirements,campaignQuestIds,campaignAllowed,campaignGuard,campaignView} from './campaign.mjs';
 import {trainingDates} from './enrollment-fields.mjs';
 import { AuthError } from './auth.mjs';
 import { normalizeRecap, calculateRecapResult } from '../../frontend/recap-model.mjs';
@@ -26,9 +27,13 @@ async function assignment(db,p,assignmentId,mode='read'){
  if(!row)fail('not_found',404);
  // Reviewing a task additionally requires its assigned GM (admin is the explicit override).
  if(mode==='review'&&p.role!=='admin'&&row.assigned_gm_profile_id!==p.id)fail('not_found',404);
+ if(mode!=='read'||p.role==='student')await requireCampaignStage(db,row.party_id,row.quest_id);
  return row;
 }
-function assignmentGuard(p,a,mode){return {sql:`EXISTS(SELECT 1 FROM assignments a JOIN parties p ON p.id=a.party_id JOIN quests q ON q.id=a.quest_id WHERE a.id=? AND a.version=? AND a.status=? AND q.status!='archived' AND ${scopeSQL('p',mode)} ${mode==='review'?"AND (?='admin' OR a.assigned_gm_profile_id=?)":''})`,args:[a.id,a.version,a.status,...scopeArgs(p,mode),...(mode==='review'?[p.role,p.id]:[])]};}
+function assignmentGuard(p,a,mode){const stage=campaignGuard(a.quest_id,a.party_id);return {sql:`EXISTS(SELECT 1 FROM assignments a JOIN parties p ON p.id=a.party_id JOIN quests q ON q.id=a.quest_id WHERE a.id=? AND a.version=? AND a.status=? AND q.status!='archived' AND ${scopeSQL('p',mode)} ${mode==='review'?"AND (?='admin' OR a.assigned_gm_profile_id=?)":''}) AND (${stage.sql})`,args:[a.id,a.version,a.status,...scopeArgs(p,mode),...(mode==='review'?[p.role,p.id]:[]),...stage.args]};}
+async function completedCampaign(db,partyId){return new Set((await all(db,"SELECT DISTINCT quest_id FROM assignments WHERE party_id=? AND status='completed'",partyId)).map(a=>a.quest_id));}
+async function requireCampaignStage(db,partyId,questId){if(campaignRequirements[questId]&&!campaignAllowed(questId,await completedCampaign(db,partyId)))fail('campaign_stage_locked',409);}
+function studentCampaignFilter(p){if(p.role!=='student')return{sql:'1=1',args:[]};const requirements=JSON.stringify(Object.fromEntries(campaignQuestIds.map(id=>[id,campaignPrerequisites(id)])));return{sql:`(NOT EXISTS(SELECT 1 FROM json_each(?) r WHERE r.key=q.id) OR EXISTS(SELECT 1 FROM json_each(?) r WHERE r.key=q.id AND (json_array_length(r.value)=0 OR EXISTS(SELECT 1 FROM parties p WHERE ${scopeSQL('p')} AND NOT EXISTS(SELECT 1 FROM json_each(r.value) needed WHERE NOT EXISTS(SELECT 1 FROM assignments ca WHERE ca.party_id=p.id AND ca.quest_id=needed.value AND ca.status='completed'))))))`,args:[requirements,requirements,...scopeArgs(p)]};}
 function partyGuard(p,partyId,mode){return{sql:`EXISTS(SELECT 1 FROM parties p WHERE p.id=? AND ${scopeSQL('p',mode)})`,args:[partyId,...scopeArgs(p,mode)]};}
 async function fingerprint(route,body){const bytes=new TextEncoder().encode(route+'\n'+JSON.stringify(body));return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');}
 export async function readBody(request){
@@ -73,22 +78,23 @@ export async function gameAPI(request,db,p,path){
  return {profile,xp:xp.total,level:Math.floor(xp.total/150)+1,badges:page(badges),xpLog:page(xpLog)};
  }
  if(root==='quests'&&parts.length===1&&method==='GET'){
- return page(await all(db,"SELECT id,name,objective,quest_type,xp_reward,metadata_json FROM quests WHERE status='available' ORDER BY name,id LIMIT 101"));
+ const visible=studentCampaignFilter(p);return page(await all(db,`SELECT q.id,q.name,q.objective,q.quest_type,q.xp_reward,q.metadata_json FROM quests q WHERE q.status='available' AND ${visible.sql} ORDER BY q.name,q.id LIMIT 101`,...visible.args));
  }
+ if(root==='campaign'&&target&&parts.length===2&&method==='GET'){const team=await party(db,p,target);const completed=await completedCampaign(db,team.id);return{party:team,...campaignView(completed),allowedQuestIds:campaignQuestIds.filter(id=>campaignAllowed(id,completed))};}
  if(root==='parties'&&target&&action==='dashboard'&&parts.length===3&&method==='GET'){
  const team=await party(db,p,target);const members=await all(db,'SELECT u.id,u.display_name,u.role,u.status FROM party_members m JOIN profiles u ON u.id=m.profile_id WHERE m.party_id=? ORDER BY u.display_name LIMIT 101',target);
- const tasks=await all(db,"SELECT a.*,q.name quest_name,q.objective FROM assignments a JOIN quests q ON q.id=a.quest_id WHERE a.party_id=? AND a.status!='archived' AND q.status!='archived' ORDER BY a.created_at DESC,a.id LIMIT 101",target);
- return {party:team,members:page(members),assignments:page(tasks),canReview:reviewer(p)&&(p.role==='admin'||team.gm_profile_id===p.id),canWrite:p.role==='admin'||p.role==='student'};
+ const completed=await completedCampaign(db,target);const tasks=await all(db,"SELECT a.*,q.name quest_name,q.objective FROM assignments a JOIN quests q ON q.id=a.quest_id WHERE a.party_id=? AND a.status!='archived' AND q.status!='archived' ORDER BY a.created_at DESC,a.id LIMIT 101",target);
+ return {party:team,members:page(members),assignments:page(p.role==='student'?tasks.filter(a=>campaignAllowed(a.quest_id,completed)):tasks),campaignAllowedIds:campaignQuestIds.filter(id=>campaignAllowed(id,completed)),canReview:reviewer(p)&&(p.role==='admin'||team.gm_profile_id===p.id),canWrite:p.role==='admin'||p.role==='student'};
  }
  if(root==='parties'&&target&&action==='accept'&&parts.length===3&&method==='POST'){
- const team=await party(db,p,target,'write');const quest=await first(db,"SELECT * FROM quests WHERE id=? AND status='available'",id(body.questId));if(!quest)fail('quest_not_available',409);
+ const team=await party(db,p,target,'write');const quest=await first(db,"SELECT * FROM quests WHERE id=? AND status='available'",id(body.questId));if(!quest)fail('quest_not_available',409);await requireCampaignStage(db,team.id,quest.id);
  const existing=await first(db,"SELECT id FROM assignments WHERE party_id=? AND quest_id=? AND status NOT IN ('completed','archived')",team.id,quest.id);if(existing)fail('already_assigned',409);
  const members=await all(db,"SELECT m.profile_id FROM party_members m JOIN profiles u ON u.id=m.profile_id WHERE m.party_id=? AND u.status='active' LIMIT 101",team.id);if(!members.length||members.length>100)fail('invalid_party_members',409);
  const roles=body.partyRoles||{};jsonObject(roles,8000);for(const [member,role]of Object.entries(roles)){if(!members.some(m=>m.profile_id===member))fail();text(role,120,true);}
  const metadata=JSON.parse(quest.metadata_json);const days=Number.isInteger(metadata.defaultDeadlineDays)?Math.min(365,Math.max(1,metadata.defaultDeadlineDays)):3;
  const taskId=crypto.randomUUID();const deadline=new Date(Date.now()+days*86400000).toISOString();
  const guard=partyGuard(p,team.id,'write');guard.sql+=` AND EXISTS(SELECT 1 FROM quests WHERE id=? AND status='available' AND xp_reward=?) AND NOT EXISTS(SELECT 1 FROM assignments WHERE party_id=? AND quest_id=? AND status NOT IN ('completed','archived'))`;
- guard.args.push(quest.id,quest.xp_reward,team.id,quest.id);
+ guard.args.push(quest.id,quest.xp_reward,team.id,quest.id);const stage=campaignGuard(quest.id,team.id);guard.sql+=` AND (${stage.sql})`;guard.args.push(...stage.args);
  return mutate(db,p,key,hash,guard,[
  stmt(db,"INSERT INTO assignments(id,quest_id,party_id,assigned_gm_profile_id,status,deadline,accepted_at,party_roles_json,reward_xp,reward_badge) VALUES(?,?,?,?,'waiting_gm_approval',?,CURRENT_TIMESTAMP,?,?,?)",taskId,quest.id,team.id,team.gm_profile_id,deadline,JSON.stringify(roles),quest.xp_reward,text(metadata.badgeReward,200)||null),
  stmt(db,"INSERT INTO assignment_participants SELECT ?,m.profile_id FROM party_members m JOIN profiles u ON u.id=m.profile_id WHERE m.party_id=? AND u.status='active'",taskId,team.id)
