@@ -65,10 +65,21 @@ Evidence remains HTTPS links; no files are uploaded and Drive sharing is unchang
 
 Node 24+: npm ci at root, then npm test --workspace backend. Tests cover signed tokens, schema-backed multi-account scope, state transitions, race guards, rollback, idempotency, award deduplication, enrollment/reassignment, recap validation/isolation and imports. A test also runs local Cloudflare workerd/Miniflare D1 with cf:false, including quest lifecycle and D1 batch rollback. This avoids external request.cf metadata fetches.
 
-79 tests pass. Frontend module syntax/bundling and Wrangler bundle dry-run are checked. Headless browser execution is incomplete because Chromium is unavailable in this workspace; owner mobile validation is still required.
+87 tests pass. Frontend module syntax/bundling and Wrangler bundle dry-run are checked. Headless browser execution is incomplete because Chromium is unavailable in this workspace; owner mobile validation is still required.
 
 References:
 - https://developers.cloudflare.com/d1/worker-api/d1-database/
 - https://developers.cloudflare.com/d1/reference/migrations/
 - https://developers.cloudflare.com/d1/best-practices/import-export-data/
 - https://firebase.google.com/docs/auth/admin/verify-id-tokens
+
+
+## New student registration (0004)
+
+Apply `backend/migrations/0004_student_enrollment.sql` once to the existing dev D1 after 0002. It adds cohort and training date fields without changing imported profiles, historical recaps, roles or status. Because the foundation was created manually, do not rerun 0001 or blindly apply all migration files remotely. Then deploy this branch's Worker and redeploy Pages with output `frontend`.
+
+After Google sign-in, an unregistered account sees a registration form. GET/POST `/api/enrollment` requires a verified Firebase Google token but does not require an already active D1 profile. Email and UID come only from signed token claims. The POST accepts display name, university, rotation, cohort, start date and end date; extra keys, invalid dates and reversed ranges are rejected. Every new profile is student/pending. Unique Firebase UID makes sequential and concurrent retries reuse the same profile; registration and audit commit together. No display-name/email matching to imported alumni occurs. Existing inactive accounts cannot reactivate through registration.
+
+Madeaw uses Admin → accounts to select the pending Google-linked request, review details, set active and save, then assign the student to a party using the existing party editor. New linked requests sort ahead of unlinked imported records. Cohort is a group label, not a permission boundary; party membership remains the access boundary. Approval does not assign a team automatically. Alumni stay intact and need no UID enrollment unless access is explicitly requested. Existing active student accounts retain their access; pending accounts cannot call game or admin APIs. No passwords, Firebase admin keys or tokens are stored by registration.
+
+Acceptance: sign in with a new Google account → submit → pending message → Madeaw approves → retry access → active student game. Repeat registration must not create duplicates. Test an inactive account remains blocked and a pending student cannot approve themselves. Run Node tests and the local workerd/D1 runtime test. Actual Google popup/browser acceptance still requires an allowed-network device; the hospital proxy issue remains unresolved.

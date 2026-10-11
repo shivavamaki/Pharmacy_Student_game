@@ -7,7 +7,7 @@ import { createWorker } from '../src/worker.mjs';
 import { emptyRecap } from '../../frontend/recap-model.mjs';
 import { gameRequest } from '../../frontend/game-client.mjs';
 function fixture(){
- const sql=new DatabaseSync(':memory:');for(const migration of ['0001_foundation.sql','0002_game.sql'])sql.exec(readFileSync(new URL('../migrations/'+migration,import.meta.url),'utf8'));
+ const sql=new DatabaseSync(':memory:');for(const migration of ['0001_foundation.sql','0002_game.sql','0004_student_enrollment.sql'])sql.exec(readFileSync(new URL('../migrations/'+migration,import.meta.url),'utf8'));
  sql.exec(`INSERT INTO profiles(id,firebase_uid,display_name,role,status) VALUES('admin','admin','Admin','admin','active'),('gm','gm','GM','gm','active'),('othergm','othergm','Other GM','gm','active'),('preceptor','preceptor','Preceptor','preceptor','active'),('one','one','One','student','active'),('two','two','Two','student','active');
  INSERT INTO parties(id,name,gm_profile_id) VALUES('a','A','gm'),('b','B','othergm'),('c','C','preceptor');
  INSERT INTO party_members VALUES('a','one'),('b','two'),('c','two');

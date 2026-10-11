@@ -80,3 +80,12 @@ test('health reflects auth configuration and unknown API stays closed',async()=>
   assert.equal((await (await worker.fetch(new Request('https://api.test/health'),env)).json()).authenticationReady,true);
   assert.equal((await worker.fetch(new Request('https://api.test/api/unimplemented'),env)).status,404);
 });
+
+test('enrollment identity comes from signed verified Google claims, never request input',async()=>{
+ const identityVerifier=createTokenVerifier(async()=>keys.publicKey,{includeIdentity:true});
+ const identity=await identityVerifier(await token({email:'student@example.test',name:'Student'}),project);
+ assert.deepEqual(identity,{uid:'uid-one',email:'student@example.test',displayName:'Student'});
+ await assert.rejects(()=>identityVerifier(token,project),{code:'invalid_token'});
+ await assert.rejects(async()=>identityVerifier(await token({email:'student@example.test',email_verified:false}),project),{code:'invalid_token'});
+ await assert.rejects(async()=>identityVerifier(await token(),project),{code:'invalid_token'});
+});

@@ -1,4 +1,5 @@
 import { AuthError, authenticate, createTokenVerifier } from './auth.mjs';
+import { enrollmentAPI } from './enrollment.mjs';
 import { gameAPI } from './game.mjs';
 import { listAssignments } from './assignments.mjs';
 import { listParties } from './parties.mjs';
@@ -11,7 +12,7 @@ function json(body, status = 200, headers = {}) {
     ...headers
   } });
 }
-export function createWorker(verifyToken = createTokenVerifier()) {
+export function createWorker(verifyToken = createTokenVerifier(undefined, { includeIdentity: true })) {
 return {
   async fetch(request, env = {}) {
     const path = new URL(request.url).pathname;
@@ -42,6 +43,13 @@ return {
       if (request.method !== 'GET')
         return json({ error: 'method_not_allowed' }, 405, { ...cors, Allow: 'GET' });
       return json({ ok: true, stage: 'authentication', authenticationReady: Boolean(env.FIREBASE_PROJECT_ID && env.DB) }, 200, cors);
+    }
+    if (path === '/api/enrollment') {
+      try { return json(await enrollmentAPI(request,env,verifyToken),200,cors); }
+      catch(error) {
+        if(error instanceof AuthError)return json({error:error.code},error.status,cors);
+        return json({error:'data_unavailable'},503,cors);
+      }
     }
     const assignmentRoute = /^\/api\/parties\/([^/]+)\/assignments$/.exec(path);
     if (path === '/api/me' || path === '/api/parties' || assignmentRoute) {

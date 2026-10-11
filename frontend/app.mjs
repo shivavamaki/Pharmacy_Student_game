@@ -1,5 +1,6 @@
 import { firebaseConfig } from './firebase-config.mjs';
 import { getMyProfile } from './api-client.mjs';
+import { mountEnrollment } from './enrollment-ui.mjs';
 import { mountGame } from './game-ui.mjs';
 const $=id=>document.getElementById(id);
 const login=$('login'),logout=$('logout'),retry=$('retry'),welcome=$('welcome'),message=$('message');
@@ -10,10 +11,16 @@ try{
  const auth=sdk.getAuth(appSDK.initializeApp(firebaseConfig));await sdk.setPersistence(auth,sdk.inMemoryPersistence);
  const provider=new sdk.GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});
  let generation=0,controller;
- function clear(){++generation;controller?.abort();welcome.hidden=true;$('game').replaceChildren();}
+ function clear(){++generation;controller?.abort();welcome.hidden=true;$('game').replaceChildren();$('enrollment').hidden=true;$('enrollment').replaceChildren();}
  async function load(user){clear();const current=generation;const requestController=new AbortController();controller=requestController;retry.disabled=true;message.textContent='กำลังตรวจสิทธิ์…';const timeout=setTimeout(()=>requestController.abort(),15000);
  try{const profile=await getMyProfile(user,{signal:requestController.signal});clearTimeout(timeout);if(current!==generation||auth.currentUser!==user)return;$('name').textContent=profile.displayName;$('role').textContent=roles[profile.role];welcome.hidden=false;message.textContent='เข้าสู่ระบบเรียบร้อย';await mountGame(user,profile,$('game'),requestController.signal);}
- catch(error){if(current===generation&&auth.currentUser===user)message.textContent=errors[error.code]||'เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่';}
+ catch(error){if(current===generation&&auth.currentUser===user){
+ if(['enrollment_required','account_not_active'].includes(error.code)){
+  message.textContent='ตรวจสถานะการลงทะเบียน…';
+  try{await mountEnrollment(user,$('enrollment'),requestController.signal,()=>load(user));if(current===generation&&auth.currentUser===user){$('enrollment').hidden=false;message.textContent='ข้อมูลการลงทะเบียน';}}
+  catch(enrollmentError){if(current===generation)message.textContent=enrollmentError.code==='migration_required'?'ระบบลงทะเบียนยังไม่พร้อม กรุณาติดต่อผู้ดูแล':'ตรวจการลงทะเบียนไม่สำเร็จ กรุณาลองใหม่';}
+ }else message.textContent=errors[error.code]||'เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่';
+ }}
  finally{clearTimeout(timeout);if(current===generation)retry.disabled=false;}}
  sdk.onAuthStateChanged(auth,user=>{clear();login.hidden=!!user;logout.hidden=!user;retry.hidden=!user;login.disabled=false;$('session-note').hidden=!!user;if(user)void load(user);else message.textContent='พร้อมเริ่มการเรียนรู้';});
  login.addEventListener('click',async()=>{login.disabled=true;try{await sdk.signInWithPopup(auth,provider);}catch(error){message.textContent=errors[error.code]||'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่';}finally{login.disabled=false;}});

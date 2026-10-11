@@ -1,3 +1,4 @@
+import {trainingDates} from './enrollment-fields.mjs';
 import { AuthError } from './auth.mjs';
 import { normalizeRecap, calculateRecapResult } from '../../frontend/recap-model.mjs';
 const fail=(code='invalid_request',status=400)=>{throw new AuthError(code,status);};
@@ -164,7 +165,7 @@ async function adminAPI(db,p,parts,method,body,key,hash){
  if(p.role!=='admin')fail('forbidden',403);const [,resource,target]=parts;if(parts.length>3)fail('not_found',404);
  const guard={sql:'1',args:[]};
  if(method==='GET'){
- if(resource==='profiles')return page(await all(db,'SELECT id,firebase_uid,email,display_name,university,rotation,character_class,role,status FROM profiles ORDER BY display_name,id LIMIT 101'));
+ if(resource==='profiles')return page(await all(db,"SELECT id,firebase_uid,email,display_name,university,rotation,character_class,cohort,training_start,training_end,role,status FROM profiles ORDER BY (status='pending' AND firebase_uid IS NOT NULL) DESC,created_at DESC,id LIMIT 101"));
  if(resource==='quests')return page(await all(db,'SELECT * FROM quests ORDER BY name,id LIMIT 101'));
  if(resource==='parties')return page(await all(db,'SELECT p.*,(SELECT json_group_array(profile_id) FROM party_members WHERE party_id=p.id) member_ids_json FROM parties p ORDER BY p.name,p.id LIMIT 101'));
  if(resource==='settings')return page(await all(db,'SELECT * FROM settings ORDER BY key LIMIT 101'));
@@ -173,8 +174,9 @@ async function adminAPI(db,p,parts,method,body,key,hash){
  }
  if(resource==='profiles'&&method==='POST'){
  const profileId=id(body.id),uid=body.firebaseUid==null?null:text(body.firebaseUid,128,true),email=body.email==null?null:text(body.email,320,true),role=oneOf(body.role,['student','gm','preceptor','admin']),status=oneOf(body.status,['pending','active','inactive']);if(profileId===p.id&&(role!=='admin'||status!=='active'))fail('cannot_disable_self',409);
+ const [trainingStart,trainingEnd]=trainingDates(body.trainingStart,body.trainingEnd);
  const old=await first(db,'SELECT role,status FROM profiles WHERE id=?',profileId);if(old?.role==='admin'&&(role!=='admin'||status!=='active')){guard.sql="(SELECT COUNT(*) FROM profiles WHERE role='admin' AND status='active')>1";}
- return mutate(db,p,key,hash,guard,[stmt(db,'INSERT INTO profiles(id,firebase_uid,email,display_name,university,rotation,character_class,role,status) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET firebase_uid=excluded.firebase_uid,email=excluded.email,display_name=excluded.display_name,university=excluded.university,rotation=excluded.rotation,character_class=excluded.character_class,role=excluded.role,status=excluded.status,updated_at=CURRENT_TIMESTAMP',profileId,uid,email,text(body.displayName,200,true),text(body.university,200),text(body.rotation,200),text(body.characterClass,200),role,status)],{ok:true},'profile.save',profileId);
+ return mutate(db,p,key,hash,guard,[stmt(db,'INSERT INTO profiles(id,firebase_uid,email,display_name,university,rotation,character_class,role,status,cohort,training_start,training_end) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET firebase_uid=excluded.firebase_uid,email=excluded.email,display_name=excluded.display_name,university=excluded.university,rotation=excluded.rotation,character_class=excluded.character_class,role=excluded.role,status=excluded.status,cohort=excluded.cohort,training_start=excluded.training_start,training_end=excluded.training_end,updated_at=CURRENT_TIMESTAMP',profileId,uid,email,text(body.displayName,200,true),text(body.university,200),text(body.rotation,200),text(body.characterClass,200),role,status,text(body.cohort,200),trainingStart,trainingEnd)],{ok:true},'profile.save',profileId);
  }
  if(resource==='quests'&&method==='POST'){
  const questId=id(body.id);const metadata={chapter:integer(body.chapter??1,1,100),category:text(body.category,200),competencies:body.competencies||[],requiredEvidence:body.requiredEvidence||[],badgeReward:text(body.badgeReward,200),defaultDeadlineDays:integer(body.defaultDeadlineDays??3,1,365)};

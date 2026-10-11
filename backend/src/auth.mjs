@@ -39,7 +39,7 @@ export function googleKeyResolver(fetcher = fetch) {
   };
 }
 
-export function createTokenVerifier(resolveKey = googleKeyResolver()) {
+export function createTokenVerifier(resolveKey = googleKeyResolver(), { includeIdentity = false } = {}) {
   return async (token, projectId) => {
     if (typeof token !== 'string' || token.length > 16384)
       throw new AuthError('invalid_token', 401);
@@ -55,6 +55,11 @@ export function createTokenVerifier(resolveKey = googleKeyResolver()) {
           !Number.isInteger(payload.auth_time) || payload.auth_time > now || payload.auth_time > payload.iat ||
           payload.firebase?.sign_in_provider !== 'google.com' || payload.email_verified !== true)
         throw new AuthError('invalid_token', 401);
+      if (includeIdentity) {
+        if (typeof payload.email !== 'string' || !payload.email || payload.email.length > 320)
+          throw new AuthError('invalid_token', 401);
+        return { uid: payload.sub, email: payload.email, displayName: typeof payload.name === 'string' ? payload.name.slice(0,200) : '' };
+      }
       return payload.sub;
     } catch (error) {
       if (error instanceof AuthError) throw error;
@@ -68,7 +73,8 @@ export async function authenticate(request, env, verifyToken) {
     throw new AuthError('authentication_not_configured', 503);
   const match = /^Bearer ([^\s]+)$/i.exec(request.headers.get('Authorization') || '');
   if (!match) throw new AuthError('authentication_required', 401);
-  const uid = await verifyToken(match[1], env.FIREBASE_PROJECT_ID);
+  const identity = await verifyToken(match[1], env.FIREBASE_PROJECT_ID);
+  const uid = typeof identity === 'string' ? identity : identity.uid;
   let profile;
   try {
     profile = await env.DB.prepare('SELECT id, display_name, role, status FROM profiles WHERE firebase_uid = ?').bind(uid).first();
