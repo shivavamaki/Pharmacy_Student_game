@@ -22,5 +22,7 @@ export async function characterJourney(db,p){
  for(const [threshold,title]of [[150,'Rising Adventurer'],[450,'Seasoned Adventurer'],[900,'Guild Veteran']])if(xp>=threshold)add('xp-'+threshold,title,'สะสม '+threshold+' XP','xp');
  if(recapStats.count)add('reflection','Journey Chronicler','ส่งบันทึกสะท้อนการเรียนรู้แล้ว','reflection');
  const latest=reflections[0]||null;const skills=(latest?.skills||[]).filter(skill=>recapOptions.skills.includes(skill));
- return{character,xp,level:Math.floor(xp/150)+1,nextLevelXp:(Math.floor(xp/150)+1)*150,xpWithinLevel:xp%150,badges:page(badges),badgeStats,achievements,missionStats,assessmentStats:{...assessmentStats,percentage:assessmentStats.max_score?Math.round(1000*assessmentStats.score/assessmentStats.max_score)/10:null},assessments:page(assessments),reflectionStats:{count:recapStats.count,latest},reflections:page(reflections),selfReportedSkills:skills};
+ const gold=(await first(db,'SELECT COALESCE(SUM(gold),0) total FROM gold_awards WHERE profile_id=?',p.id)).total;
+ const goldLog=page(await all(db,'SELECT g.id,g.gold,g.created_at,q.name quest_name FROM gold_awards g JOIN assignments a ON a.id=g.assignment_id JOIN quests q ON q.id=a.quest_id WHERE g.profile_id=? ORDER BY g.created_at DESC,g.id LIMIT 101',p.id));
+ return{character,gold,goldLog,xp,level:Math.floor(xp/150)+1,nextLevelXp:(Math.floor(xp/150)+1)*150,xpWithinLevel:xp%150,badges:page(badges),badgeStats,achievements,missionStats,assessmentStats:{...assessmentStats,percentage:assessmentStats.max_score?Math.round(1000*assessmentStats.score/assessmentStats.max_score)/10:null},assessments:page(assessments),reflectionStats:{count:recapStats.count,latest},reflections:page(reflections),selfReportedSkills:skills};
 }

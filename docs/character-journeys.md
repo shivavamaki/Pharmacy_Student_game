@@ -28,7 +28,7 @@ Achievements: Guild Adventurer, completed weekly stages, defeated mini/final bos
 ## Deployment
 
 1. In Cloudflare **D1 → pharmacy-guild-dev → Console**, paste and execute the SQL contents of `backend/migrations/0005_characters.sql`. Paste SQL, not the filename. The CREATE TABLE IF NOT EXISTS script is safe to rerun and preserves all existing data.
-2. Deploy Worker from `migration/cloudflare-foundation` after this migration.
+2. Apply `backend/migrations/0006_quest_rewards.sql` before deploying the current Worker; see [quest-rewards.md](quest-rewards.md). Then deploy Worker from `migration/cloudflare-foundation`.
 3. Deploy/check Pages from the same commit, output `frontend`.
 4. Sign in: create an avatar → Adventure Journeys → continue the adventure. Every active student in a party must do this before the party accepts a new quest.
 

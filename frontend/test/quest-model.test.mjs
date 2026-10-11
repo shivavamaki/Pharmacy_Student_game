@@ -6,3 +6,10 @@ test('legacy quest metadata can be absent, invalid or have unexpected shape',()=
 test('search uses objective, competency and category without changing legacy types',()=>{const q={name:'Ward',quest_type:'Legacy Clinical',objective:'Case discussion',metadata_json:'{"category":"IPD","competencies":["Medication reconciliation"]}'};assert.equal(matchesQuest(q,' MEDICATION ','IPD'),true);assert.equal(matchesQuest(q,'SOAP',''),false);assert.equal(q.quest_type,'Legacy Clinical');});
 test('revision returns to work step and instructions follow viewer role',()=>{assert.equal(missionStage('revision_required'),1);assert.equal(missionStage('completed'),3);assert.match(missionNextAction('waiting_gm_approval',false),/รอ GM/);assert.match(missionNextAction('waiting_gm_approval',true),/อนุมัติรับ/);});
 test('deadline display tolerates empty dates and both D1 and ISO timestamps',()=>{assert.equal(deadlineLabel(null),'ยังไม่กำหนด');assert.equal(deadlineLabel('2026-10-18 09:00:00'),deadlineLabel('2026-10-18T09:00:00Z'));assert.notEqual(deadlineLabel('2026-10-18'),'2026-10-18');});
+
+test('repeatability is explicit and legacy Gold defaults to zero',()=>{
+ assert.equal(questMeta({}).repeatable,false);assert.equal(questMeta({}).goldReward,0);
+ assert.equal(questMeta({metadata_json:'{"repeatable":"true","goldReward":-1}'}).repeatable,false);
+ const m=questMeta({metadata_json:'{"repeatable":true,"goldReward":40}'});assert.equal(m.repeatable,true);assert.equal(m.goldReward,40);
+ for(const q of curriculumQuests){assert.equal(q.repeatable,false);assert.ok(q.goldReward>0);}
+});

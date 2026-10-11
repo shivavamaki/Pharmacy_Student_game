@@ -21,14 +21,14 @@ Both Side Quests are required projects for the rotation, despite their game labe
 
 ## Install and review
 
-1. Deploy **Worker** from `migration/cloudflare-foundation` first, then deploy **Pages** with output `frontend`. The story feature itself needs no schema change; the character feature now requires `0005_characters.sql` first (see [character-journeys.md](character-journeys.md)).
-2. Madeaw opens **จัดการ → ติดตั้ง / อัปเดตแคมเปญ 5 สัปดาห์**.
-3. The installer adds missing campaign IDs and updates the ten known curriculum briefs, preserving existing XP, status, badge and deadline settings. It never touches other IDs. Partial installs can be retried. More than 100 templates stops installation for review.
+1. Deploy **Worker** from `migration/cloudflare-foundation` first, then deploy **Pages** with output `frontend`. The character feature requires `0005_characters.sql`; quest completion and Gold now require `0006_quest_rewards.sql` first (see [character-journeys.md](character-journeys.md)).
+2. Madeaw opens **จัดการ → ติดตั้งเควสต์หลักสูตรที่ยังขาด**.
+3. The installer adds missing campaign IDs only, preserving every field of an existing template, including administrator edits to objectives and evidence. It never touches other IDs. Partial installs can be retried. More than 100 templates stops installation for review.
 4. Review each template in **แม่แบบภารกิจ**. Existing assignments retain their accepted reward snapshots.
 
 Progression is enforced by the Worker per party. A GM must review evidence and mark the current assignment completed to open the next stage. Approval to start and progress percentage alone do not unlock it. The default path is Training → OPD → IPD → the three week-four practice areas → project mini boss → academic mini boss → SOAP → final integration. Both side projects open after Training and must be completed before accepting the project mini boss. All three week-four locations open together and are reviewed under the same weekly Main Quest. Future narrative is omitted from the campaign response, and future campaign quests/assignments are hidden from students. Legacy quest IDs remain independent. See [campaign-artwork.md](campaign-artwork.md).
 
-Defaults are configurable: Main 100 XP, each boss 200 XP, each project 250 XP; 7-day main/boss and 35-day project deadlines measured from acceptance, not cohort dates. Only SOAP has the default SOAP Champion badge.
+Defaults for newly installed templates are configurable: Main 100 XP + 50 Gold, each boss 200 XP + 100 Gold, each project 250 XP + 125 Gold; 7-day main/boss and 35-day project deadlines measured from acceptance, not cohort dates. Only SOAP has the default SOAP Champion badge.
 
 Attendance is reviewed by the GM from participation evidence. The requirements list describes what the GM must check; it is not an automatic per-student attendance register or a machine-enforced checklist. The existing Worker continues to require at least one approved evidence record and no outstanding evidence before awarding XP. Rewards still use the participants and rewards captured when the team accepts the quest.
 

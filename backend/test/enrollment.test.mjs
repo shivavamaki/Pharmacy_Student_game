@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFileSync} from 'node:fs';
 import {createWorker} from '../src/worker.mjs';
 function fixture(){
- const sql=new DatabaseSync(':memory:');for(const file of ['0001_foundation.sql','0002_game.sql','0004_student_enrollment.sql'])sql.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
+ const sql=new DatabaseSync(':memory:');for(const file of ['0001_foundation.sql','0002_game.sql','0004_student_enrollment.sql','0006_quest_rewards.sql'])sql.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
  sql.exec("INSERT INTO profiles(id,firebase_uid,display_name,role,status) VALUES('admin','admin','Madeaw','admin','active'),('legacy',NULL,'Alumni','student','inactive')");
  const prepare=(query,values=[])=>({bind(...v){return prepare(query,v);},async first(){return sql.prepare(query).get(...values)||null;},async all(){return{results:sql.prepare(query).all(...values)};},execute(){return {meta:{changes:Number(sql.prepare(query).run(...values).changes)}};}});
  const db={prepare,async batch(statements){sql.exec('BEGIN');try{const out=statements.map(s=>s.execute());sql.exec('COMMIT');return out;}catch(error){sql.exec('ROLLBACK');throw error;}}};

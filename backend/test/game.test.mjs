@@ -7,7 +7,7 @@ import { createWorker } from '../src/worker.mjs';
 import { emptyRecap } from '../../frontend/recap-model.mjs';
 import { gameRequest } from '../../frontend/game-client.mjs';
 function fixture(){
- const sql=new DatabaseSync(':memory:');for(const migration of ['0001_foundation.sql','0002_game.sql','0004_student_enrollment.sql','0005_characters.sql'])sql.exec(readFileSync(new URL('../migrations/'+migration,import.meta.url),'utf8'));
+ const sql=new DatabaseSync(':memory:');for(const migration of ['0001_foundation.sql','0002_game.sql','0004_student_enrollment.sql','0005_characters.sql','0006_quest_rewards.sql'])sql.exec(readFileSync(new URL('../migrations/'+migration,import.meta.url),'utf8'));
  sql.exec(`INSERT INTO profiles(id,firebase_uid,display_name,role,status) VALUES('admin','admin','Admin','admin','active'),('gm','gm','GM','gm','active'),('othergm','othergm','Other GM','gm','active'),('preceptor','preceptor','Preceptor','preceptor','active'),('one','one','One','student','active'),('two','two','Two','student','active');
  INSERT INTO parties(id,name,gm_profile_id) VALUES('a','A','gm'),('b','B','othergm'),('c','C','preceptor');
  INSERT INTO party_members VALUES('a','one'),('b','two'),('c','two');
@@ -81,3 +81,60 @@ test('Adventure Journeys aggregates all personal scores, historical XP/badges an
  for(let i=0;i<105;i++)f.sql.prepare("INSERT INTO historical_xp(id,profile_id,xp,created_at) VALUES(?,'one',1,CURRENT_TIMESTAMP)").run('extra-xp-'+i);assert.equal((await f.call('one','/journeys')).xp,405);
 }catch(e){throw e;}finally{f.sql.close();}});
 test('missing character migration is identified without mutating existing data',async()=>{const f=fixture();try{f.sql.exec('DROP TABLE characters');await assert.rejects(()=>f.call('one','/character'),e=>e.code==='character_migration_required'&&e.status===503);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM profiles').get().n,6);}finally{f.sql.close();}});
+
+test('once-only completed quest leaves party board, remains in history, and cannot be accepted again',async()=>{const f=fixture();try{
+ assert.ok((await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));
+ const id=await reviewed(f);await f.call('gm','/assignments/'+id+'/complete',{});
+ assert.ok(!(await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));
+ await assert.rejects(()=>f.call('one','/parties/a/accept',{questId:'q'}),e=>e.code==='quest_already_completed');
+ assert.equal((await f.call('one','/parties/a/dashboard')).assignments.items.find(a=>a.id===id).status,'completed');
+ // Another party may take the same template, but does not see this party's history.
+ assert.ok((await f.call('two','/parties/b/quest-board')).items.some(q=>q.id==='q'));await f.denied('two','/parties/a/quest-board');
+ f.sql.exec("UPDATE quests SET status='archived' WHERE id='q'");assert.equal((await f.call('one','/assignments/'+id)).assignment.status,'completed');
+ assert.equal((await f.call('one','/parties/a/dashboard')).assignments.items.length,1);
+ }finally{f.sql.close();}});
+
+test('explicit repeatability pays trusted XP and Gold once per completed round',async()=>{const f=fixture();try{
+ f.sql.exec(`UPDATE quests SET metadata_json='{"repeatable":true,"goldReward":45,"badgeReward":"Hero"}' WHERE id='q'`);
+ const id=await reviewed(f);await f.denied('one','/parties/a/accept',{questId:'q'},409);
+ f.sql.exec(`UPDATE quests SET xp_reward=200,metadata_json='{"repeatable":true,"goldReward":70}' WHERE id='q'`);
+ const result=await f.call('gm','/assignments/'+id+'/complete',{gold:9999,xp:9999},'gold-complete-001');assert.equal(result.xp,100);assert.equal(result.gold,45);
+ await f.call('gm','/assignments/'+id+'/complete',{gold:9999,xp:9999},'gold-complete-001');await f.call('gm','/assignments/'+id+'/complete',{});
+ assert.ok((await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));
+ const round2=await reviewed(f);await f.call('gm','/assignments/'+round2+'/complete',{});
+ assert.notEqual(round2,id);assert.equal((await f.call('one','/summary')).xp,300);assert.equal((await f.call('one','/summary')).gold,115);assert.equal((await f.call('one','/journeys')).goldLog.items.length,2);assert.equal((await f.call('two','/summary')).gold,0);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM gold_awards').get().n,2);
+ // Applying the migration again preserves balances and snapshots.
+ f.sql.exec(readFileSync(new URL('../migrations/0006_quest_rewards.sql',import.meta.url),'utf8'));assert.equal((await f.call('one','/summary')).gold,115);
+ }finally{f.sql.close();}});
+
+test('Gold failure rolls back completion, XP, badges and idempotency entry',async()=>{const f=fixture();try{
+ f.sql.exec(`UPDATE quests SET metadata_json='{"goldReward":20,"badgeReward":"Hero"}' WHERE id='q'`);const id=await reviewed(f);
+ f.sql.exec("CREATE TRIGGER fail_gold BEFORE INSERT ON gold_awards BEGIN SELECT RAISE(ABORT,'forced gold failure');END");
+ await assert.rejects(()=>f.call('gm','/assignments/'+id+'/complete',{},'gold-failure-key'));
+ assert.equal(f.sql.prepare('SELECT status FROM assignments WHERE id=?').get(id).status,'waiting_gm_review');
+ for(const table of ['xp_awards','gold_awards','badge_awards'])assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM '+table).get().n,0);
+ assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM api_operations WHERE idempotency_key='gold-failure-key'").get().n,0);
+ }finally{f.sql.close();}});
+
+test('repeat policy changes during acceptance cause atomic rollback; admin validates reward metadata',async()=>{const f=fixture();try{
+ f.setBeforeBatch(()=>f.sql.exec(`UPDATE quests SET metadata_json='{"goldReward":10,"repeatable":true}' WHERE id='q'`));await f.denied('one','/parties/a/accept',{questId:'q'},409);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM assignments').get().n,0);
+ const q={id:'new',name:'New',questType:'side',xpReward:12,status:'available',goldReward:8,repeatable:true};
+ for(const patch of [{goldReward:-1},{goldReward:1.5},{goldReward:'10'},{repeatable:'true'},{goldReward:100001}])await f.denied('admin','/admin/quests',{...q,...patch},400);
+ await f.call('admin','/admin/quests',q);const meta=JSON.parse(f.sql.prepare("SELECT metadata_json FROM quests WHERE id='new'").get().metadata_json);assert.equal(meta.goldReward,8);assert.equal(meta.repeatable,true);
+ }finally{f.sql.close();}});
+
+test('done history cannot displace active tasks; once-only guard checks all history',async()=>{const f=fixture();try{
+ for(let i=0;i<105;i++)f.sql.prepare("INSERT INTO assignments(id,quest_id,party_id,status,created_at) VALUES(?,'q','a','completed','2030-01-01')").run('old-'+i);
+ f.sql.exec("INSERT INTO assignments(id,quest_id,party_id,status,created_at) VALUES('current','locked','a','in_progress','2020-01-01')");
+ const dashboard=await f.call('one','/parties/a/dashboard');assert.ok(dashboard.assignments.items.some(a=>a.id==='current'));assert.equal(dashboard.assignments.hasMore,true);
+ assert.ok(!(await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));await f.denied('one','/parties/a/accept',{questId:'q'},409);
+ f.sql.exec("DELETE FROM assignments;INSERT INTO assignments(id,quest_id,party_id,status) VALUES('archived-done','q','a','archived');INSERT INTO xp_awards(id,assignment_id,profile_id,xp,approved_by) VALUES('earned','archived-done','one',100,'gm')");
+ assert.ok(!(await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));await f.denied('one','/parties/a/accept',{questId:'q'},409);
+ }finally{f.sql.close();}});
+
+test('Worker identifies missing Gold migration before serving game data',async()=>{const f=fixture();try{
+ f.sql.exec('DROP TABLE gold_awards');const worker=createWorker(async uid=>uid);const response=await worker.fetch(new Request('https://api.test/api/summary',{headers:{Authorization:'Bearer one'}}),{DB:f.db,FIREBASE_PROJECT_ID:'test'});
+ assert.equal(response.status,503);assert.equal((await response.json()).error,'reward_migration_required');assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM profiles').get().n,6);
+ }finally{f.sql.close();}});
