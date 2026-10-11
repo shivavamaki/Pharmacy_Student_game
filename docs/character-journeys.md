@@ -35,3 +35,9 @@ Achievements: Guild Adventurer, completed weekly stages, defeated mini/final bos
 No new curriculum installation is required for this character feature. Existing campaign progression and legacy quest templates remain intact. Existing users also choose and save their avatar once; historical XP and badges then appear on their character record.
 
 Validation includes class palette validation, SVG injection resistance, mandatory avatars, account ownership, stale edits, atomic acceptance guards, historical reward aggregation, personal-score isolation, and missing-migration errors. Local Miniflare/D1 browser checks cover creation, preview, class-linked reflection submission, persisted appearance edits, ongoing campaign gates, admin curriculum update, and 390px/1440px layouts. Screenshots under docs/ui-preview use simulated data.
+
+## Chapter quest button troubleshooting
+
+Clicking **เปิดเควสต์บทนี้** loads the available quest catalog. If the campaign template is missing or not available, it cannot open the brief. Feedback now appears directly below the clicked button, including loading and retryable failure states. Madeaw receives a shortcut to the curriculum installer. Install/update the campaign and review the template's available status, then retry. Existing legacy templates remain untouched. Successful navigation focuses and scrolls to the quest heading, so opening from the bottom of a long story does not leave the user below the new brief.
+
+The button feedback fix only changes Pages. Its local browser regression checks cover missing catalog entries, failed catalog requests and retry, the admin setup shortcut, and successful heading focus.
