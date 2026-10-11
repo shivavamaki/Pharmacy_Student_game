@@ -1,6 +1,6 @@
 # Pharmacy Guild adventure artwork and progression
 
-Original pixel fantasy art uses apothecary castles, navy stone, teal magic, warm gold, and readable three-to-two compositions. Images contain no UI text; Thai titles remain HTML. These are still illustrations, not animated sprite sheets. Nine WebP assets live in `frontend/assets/campaign/` at 1024 × 683. Files are loaded only for unlocked story chapters; collapsed earlier chapters remain available for reading.
+The campaign now uses the user-supplied PixelLab locations. Ten campaign illustrations, including Guild Homecoming, are rendered in their unlocked chapters. Additional supplied locations are used in character creation, the quest board, side projects, Adventure Journeys and the admin map. Lossless WebP assets retain the native 192px canvases; centered 3:2 viewports frame the scenes. These are still illustrations, not animated sprite sheets. See [location-assets.md](location-assets.md). Files are loaded only for unlocked story chapters; collapsed earlier chapters remain available for reading.
 
 | Asset | Art direction | Unlock |
 | --- | --- | --- |
@@ -16,12 +16,12 @@ Original pixel fantasy art uses apothecary castles, navy stone, teal magic, warm
 
 Sovereign of All Plagues (SOAP) represents confusion and fragmented information. The four artifacts stand for listening (Subjective), facts (Objective), analysis (Assessment), and a care map (Plan). Patients are people the party helps; the villain is an original fantasy figure.
 
-Images were generated for this repository with the ImageGen skill. Shared brief: original 16-bit RPG pixel landscape, 3:2 composition, navy/teal/gold apothecary fantasy, no letters, logos or licensed characters. Each row above describes the scene-specific brief. WebP optimization preserves the generated original composition.
+The earlier generated illustrations have been replaced by the user-supplied location assets. Shared brief: original 16-bit RPG pixel landscape, 3:2 composition, navy/teal/gold apothecary fantasy, no letters, logos or licensed characters. Each row above describes the scene-specific brief. WebP optimization preserves the generated original composition.
 
 The story endpoint is `/api/campaign/:partyId`; it requires an active scoped account. The server-owned dependency map in `backend/src/campaign.mjs` controls reveal and mutation guards, independent of editable quest metadata. Transitive prerequisites prevent historical out-of-order completions opening later chapters. Acceptance and assignment mutations recheck prerequisites inside the existing atomic write guard. Student catalog and assignment endpoints also filter future campaign quests. GM/admin catalog access is retained for planning and review; the adventure journal follows the party's progress for every viewer.
 
 A stage is passed only when its assignment is completed by an authorized reviewer. GM starting approval, a submitted link, or 100% progress alone does not pass it. Attendance and required submissions remain human reviewed. Current stage auto-opens; previous unlocked stages collapse; hidden stages show only a remaining-door count.
 
-Deploy Worker before Pages, then use the admin campaign installer to update/add all ten templates. For the character feature, apply `0005_characters.sql` first; see [character-journeys.md](character-journeys.md). Existing legacy records and historical rewards are retained. Existing campaign assignments keep their reward snapshot; their quest brief may reflect the newly updated template.
+Deploy Worker before Pages. Artwork integration needs no curriculum reinstallation; the installer now adds missing templates only. For the character feature, apply `0005_characters.sql` first; see [character-journeys.md](character-journeys.md). Existing legacy records and historical rewards are retained. Existing campaign assignments keep their reward snapshot; their quest brief may reflect the newly updated template.
 
 Validation: backend tests cover party scope, hidden future story/catalog/assignment content, approved completion reveal, transitive dependencies and atomic rechecking. Local browser QA uses simulated students in local Miniflare/D1; screenshots contain no real student records.

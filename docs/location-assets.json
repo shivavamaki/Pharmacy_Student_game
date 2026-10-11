@@ -1,0 +1,159 @@
+{
+  "source": "User supplied PixelLab location PNGs, 2026-10-11",
+  "conversion": "Lossless WebP, unchanged dimensions and exact decoded RGBA pixels",
+  "assets": [
+    {
+      "name": "guild-hall",
+      "source_name": "guild-hall.png",
+      "width": 192,
+      "height": 128,
+      "path": "frontend/assets/guild-hall.webp",
+      "source_sha256": "47c637babc1b6252f2d1bffab381fcfd65301e6902cf2f6da8a6d9036b74c4de",
+      "webp_bytes": 8392
+    },
+    {
+      "name": "training-ground",
+      "source_name": "training-ground.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/training-ground.webp",
+      "source_sha256": "bd1b54b2428c65bb5044599288f3de311b8113e17ef9ab1d81df0023f78607ff",
+      "webp_bytes": 8736
+    },
+    {
+      "name": "opd-outpost",
+      "source_name": "opd-outpost.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/opd-outpost.webp",
+      "source_sha256": "33fc5a796e3556a2d949bbf87f3a3a82ea9358b38dba5fcf8e94f52f88ba663f",
+      "webp_bytes": 10580
+    },
+    {
+      "name": "ipd-portals",
+      "source_name": "ipd-portals.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/ipd-portals.webp",
+      "source_sha256": "114415e2f2b02c928d83fab7b20ccfec6de363bb6aab25c4a2d7f3f71290c08e",
+      "webp_bytes": 9830
+    },
+    {
+      "name": "time-chamber",
+      "source_name": "time-chamber.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/time-chamber.webp",
+      "source_sha256": "921542175805bf6d45b099412bf7ec8794356e013ab9ccca5c1473f158c67d51",
+      "webp_bytes": 62030
+    },
+    {
+      "name": "brave-library",
+      "source_name": "brave-library.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/brave-library.webp",
+      "source_sha256": "a4839b37343e8ef48cc2b35624b2a6725604f6830b05c4baf85c9bef6b0c67af",
+      "webp_bytes": 8022
+    },
+    {
+      "name": "ward-pilgrimage",
+      "source_name": "ward-pilgrimage.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/ward-pilgrimage.webp",
+      "source_sha256": "5060d1e05360b1b1670b40104e08fdbd2ba49ee734fc2ba6114535e5cbd138fe",
+      "webp_bytes": 8632
+    },
+    {
+      "name": "forgekeeper",
+      "source_name": "forgekeeper.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/forgekeeper.webp",
+      "source_sha256": "2bdd12ecdfd23d13a89adc1c4a2f465eb3012230172d933abeff1dedf8fc0379",
+      "webp_bytes": 9984
+    },
+    {
+      "name": "knowledge-keeper",
+      "source_name": "knowledge-keeper.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/knowledge-keeper.webp",
+      "source_sha256": "041bc8e59a1aaec144c3729e224aea2107e74e6516eb145f4045af47d0e1b410",
+      "webp_bytes": 10290
+    },
+    {
+      "name": "soap-sovereign",
+      "source_name": "soap-sovereign.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/soap-sovereign.webp",
+      "source_sha256": "96760e64cde956609120614fc9d0e2604f3649317b69420da14734aec9bed6c7",
+      "webp_bytes": 13154
+    },
+    {
+      "name": "guild-homecoming",
+      "source_name": "guild-homecoming.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/guild-homecoming.webp",
+      "source_sha256": "c6d580337689c9148369f2527d222e498cff18e022ba938bcb2c6ee0d69277ca",
+      "webp_bytes": 11504
+    },
+    {
+      "name": "character-creation-room",
+      "source_name": "character-creation-room.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/character-creation-room.webp",
+      "source_sha256": "662fece89dee0506faaaeb8bac779342934c27c7b91abb31b41306d6ef5575f4",
+      "webp_bytes": 9988
+    },
+    {
+      "name": "quest-board-room",
+      "source_name": "quest-board-room.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/quest-board-room.webp",
+      "source_sha256": "65f8277988e1ee6c4470c822be5caf545beddeda0f99ebbf38625cbb089dee5a",
+      "webp_bytes": 9072
+    },
+    {
+      "name": "department-project-workshop",
+      "source_name": "department-project-workshop.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/department-project-workshop.webp",
+      "source_sha256": "634bda23502b71d1d6c041391a532ddc210ecd4acb0ca2a7ca38e38382414455",
+      "webp_bytes": 10188
+    },
+    {
+      "name": "clinical-project-laboratory",
+      "source_name": "clinical-project-laboratory.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/clinical-project-laboratory.webp",
+      "source_sha256": "3c7a3a08c0073643adc56d48297bfd7f01580734c6e40668c01c7a29a90ee39f",
+      "webp_bytes": 8648
+    },
+    {
+      "name": "journey-record-room",
+      "source_name": "journey-record-room.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/journey-record-room.webp",
+      "source_sha256": "2242f972bbd79f0d5e566a3a76e5f2121f71e5267aa9dcbbd67e06f5ec13ff5a",
+      "webp_bytes": 9788
+    },
+    {
+      "name": "guild-map",
+      "source_name": "guild-map.png",
+      "width": 192,
+      "height": 192,
+      "path": "frontend/assets/campaign/guild-map.webp",
+      "source_sha256": "216e13d20761d42be6e72f7e5e494774bc169fc299d3d459797a3807ae3bd270",
+      "webp_bytes": 13654
+    }
+  ]
+}

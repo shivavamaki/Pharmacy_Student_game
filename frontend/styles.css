@@ -17,3 +17,7 @@ main:has(#welcome:not([hidden])){grid-template-columns:1fr;max-width:1240px;alig
 .character-sheet>.avatar-portrait{align-self:flex-start;flex-shrink:0}.character-sheet .avatar-portrait svg{aspect-ratio:1}
 
 .chapter-quest-controls{margin-top:18px}.chapter-quest-feedback{border-left:4px solid #a78449;background:#f1e3bc;padding:12px 16px;line-height:1.8;overflow-wrap:anywhere}.chapter-quest-controls .chapter-setup-action{margin-top:10px}
+
+/* Uploaded PixelLab scenes retain their native pixels. Square canvases have
+   centered landscape art; the 3:2 viewport hides their top/bottom padding. */
+.location-art{margin:16px 0 24px;border:3px solid #977444;background:#142b2d;max-width:768px;overflow:hidden}.location-art img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;object-position:center;image-rendering:pixelated}.gm-location-map{padding:14px;border:2px solid #ac8d56;background:#fff9e9;margin:18px 0}.gm-location-map>summary{cursor:pointer;font-weight:700}.gm-location-map .location-art{margin-bottom:0}.campaign-art img{object-position:center}@media(max-width:760px){.guild-scene img{aspect-ratio:3/2}.location-art{margin:12px 0 18px}}
