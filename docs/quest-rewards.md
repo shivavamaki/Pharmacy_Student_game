@@ -31,3 +31,6 @@ XP, Gold, badges, completion status, audit and idempotency records are written i
 Gold totals appear beside XP and on Adventure Journeys with a personal Gold log. Gold is currently earned currency; spending is not implemented. Gold values are integers 0–100000 and repeatability must be an actual boolean at the API.
 
 Validation: backend tests cover once-only scope, multiple rounds, trusted snapshots, repeatability races, rollback on award failure, idempotency, missing migration and history beyond 100 records. A local workerd/D1 browser check verifies completed ADR Hunter in the done log, absent from selection, repeatable quest rewards, multiline curriculum editing and preserved customization at mobile/desktop widths. Tests use local fixtures and do not alter remote D1.
+
+### Acceptance feedback on mobile
+The party dashboard now includes an acceptance preflight: whether the requester needs a character, and the names of active student members who still need avatars. The quest form shows these blockers before submission. Each save form also displays progress or API errors beside its submit button, so mobile users do not need to scroll to the global notice. These checks supplement the existing server authorization, avatar and transactional guards. No new database migration is needed.

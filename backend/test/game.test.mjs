@@ -138,3 +138,11 @@ test('Worker identifies missing Gold migration before serving game data',async()
  f.sql.exec('DROP TABLE gold_awards');const worker=createWorker(async uid=>uid);const response=await worker.fetch(new Request('https://api.test/api/summary',{headers:{Authorization:'Bearer one'}}),{DB:f.db,FIREBASE_PROJECT_ID:'test'});
  assert.equal(response.status,503);assert.equal((await response.json()).error,'reward_migration_required');assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM profiles').get().n,6);
  }finally{f.sql.close();}});
+
+test('party acceptance preflight lists active students missing avatars and the requester requirement',async()=>{const f=fixture();try{
+ f.sql.exec("INSERT INTO party_members VALUES('a','two');DELETE FROM characters WHERE profile_id IN ('two','admin')");
+ const student=await f.call('one','/parties/a/dashboard');assert.deepEqual(student.acceptance,{requiresAvatar:false,missingAvatarNames:['Two']});
+ const admin=await f.call('admin','/parties/a/dashboard');assert.equal(admin.acceptance.requiresAvatar,true);
+ f.sql.exec("UPDATE profiles SET status='inactive' WHERE id='two'");assert.deepEqual((await f.call('one','/parties/a/dashboard')).acceptance.missingAvatarNames,[]);
+ await accepted(f);
+}finally{f.sql.close();}});

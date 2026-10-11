@@ -109,12 +109,12 @@ export async function gameAPI(request,db,p,path){
  }
  if(root==='campaign'&&target&&parts.length===2&&method==='GET'){const team=await party(db,p,target);const completed=await completedCampaign(db,team.id);return{party:team,...campaignView(completed),allowedQuestIds:campaignQuestIds.filter(id=>campaignAllowed(id,completed))};}
  if(root==='parties'&&target&&action==='dashboard'&&parts.length===3&&method==='GET'){
- const team=await party(db,p,target);const members=await all(db,'SELECT u.id,u.display_name,u.role,u.status FROM party_members m JOIN profiles u ON u.id=m.profile_id WHERE m.party_id=? ORDER BY u.display_name LIMIT 101',target);
+ const team=await party(db,p,target);const members=await all(db,'SELECT u.id,u.display_name,u.role,u.status,EXISTS(SELECT 1 FROM characters c WHERE c.profile_id=u.id) has_avatar FROM party_members m JOIN profiles u ON u.id=m.profile_id WHERE m.party_id=? ORDER BY u.display_name LIMIT 101',target);
  const completed=await completedCampaign(db,target);const taskSQL="SELECT a.*,COALESCE((SELECT gold FROM assignment_gold_rewards WHERE assignment_id=a.id),0) reward_gold,q.name quest_name,q.objective FROM assignments a JOIN quests q ON q.id=a.quest_id WHERE a.party_id=? AND ";
  const active=await all(db,taskSQL+"a.status NOT IN ('completed','archived') AND q.status!='archived' ORDER BY a.created_at DESC,a.id LIMIT 101",target);
  const done=await all(db,taskSQL+"a.status='completed' ORDER BY a.created_at DESC,a.id LIMIT 101",target);
  const tasks=[...active.slice(0,100),...done.slice(0,100)];
- return {party:team,members:page(members),assignments:{items:p.role==='student'?tasks.filter(a=>campaignAllowed(a.quest_id,completed)):tasks,hasMore:active.length>100||done.length>100},campaignAllowedIds:campaignQuestIds.filter(id=>campaignAllowed(id,completed)),canReview:reviewer(p)&&(p.role==='admin'||team.gm_profile_id===p.id),canWrite:p.role==='admin'||p.role==='student'};
+ return {party:team,acceptance:{requiresAvatar:!await characterFor(db,p.id),missingAvatarNames:members.filter(m=>m.role==='student'&&m.status==='active'&&!m.has_avatar).map(m=>m.display_name)},members:page(members),assignments:{items:p.role==='student'?tasks.filter(a=>campaignAllowed(a.quest_id,completed)):tasks,hasMore:active.length>100||done.length>100},campaignAllowedIds:campaignQuestIds.filter(id=>campaignAllowed(id,completed)),canReview:reviewer(p)&&(p.role==='admin'||team.gm_profile_id===p.id),canWrite:p.role==='admin'||p.role==='student'};
  }
  if(root==='parties'&&target&&action==='accept'&&parts.length===3&&method==='POST'){
  const team=await party(db,p,target,'write');await requireCharacter(db,p);const ready=await first(db,`SELECT ${partyAvatarSQL} ready`,team.id);if(!ready.ready)fail('party_avatar_required',409);const quest=await first(db,"SELECT * FROM quests WHERE id=? AND status='available'",id(body.questId));if(!quest)fail('quest_not_available',409);await requireCampaignStage(db,team.id,quest.id);
