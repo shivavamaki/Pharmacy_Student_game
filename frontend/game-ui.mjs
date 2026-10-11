@@ -1,4 +1,5 @@
 import { gameRequest } from './game-client.mjs';
+import { guildIcon } from './guild-icons.mjs';
 import { recapOptions, emptyRecap, normalizeRecap, calculateRecapResult } from './recap-model.mjs';
 const node=(tag,text,className)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=String(text??'');if(className)el.className=className;return el;};
 const statuses={waiting_gm_approval:'รอ GM อนุมัติ',in_progress:'กำลังดำเนินการ',waiting_gm_review:'รอตรวจหลักฐาน',revision_required:'ต้องแก้ไข',completed:'เสร็จสิ้น',waiting_review:'รอตรวจ',approved:'อนุมัติ',superseded:'แทนที่ด้วยงานใหม่'};
@@ -95,7 +96,10 @@ export async function mountGame(user,profile,root,signal){
  for(const [label,path]of [['ประวัติการเปลี่ยนแปลง','/admin/audit'],['Recap ทั้งหมด','/admin/recaps'],['การตั้งค่า','/admin/settings']])button(label,()=>show(async()=>{const data=await api(path);return()=>{heading(label);for(const row of data.items)panel.append(node('pre',JSON.stringify(row,null,2),'json-view'));listBound(data);};}));
  listBound(profiles);listBound(parties);listBound(quests);
  };});}
- for(const [label,action]of [['ทีม',teams],['ภารกิจ',quests],['XP / Badge',rewards],['ผลประเมิน',assessments],['Adventure Recap',recap],...(['admin','gm','preceptor'].includes(profile.role)?[['คิว GM',queue]]:[]),...(profile.role==='admin'?[['จัดการ',admin]]:[])])button(label,()=>action(),nav);
+ nav.setAttribute('aria-label','เมนูกิลด์');
+ for(const [label,action,icon]of [['ทีม',teams,'team'],['ภารกิจ',quests,'sword'],['XP / Badge',rewards,'coin'],['ผลประเมิน',assessments,'book'],['Adventure Recap',recap,'scroll'],...(['admin','gm','preceptor'].includes(profile.role)?[['คิว GM',queue,'shield']]:[]),...(profile.role==='admin'?[['จัดการ',admin,'gear']]:[])]){
+  const b=button(label,()=>{for(const item of nav.querySelectorAll('button'))item.removeAttribute('aria-current');b.setAttribute('aria-current','page');return action();},nav);b.prepend(guildIcon(icon));if(action===teams)b.setAttribute('aria-current','page');
+ }
  let audio,timer,musicOn=false,beat=0;
  function stopMusic(){clearInterval(timer);timer=undefined;void audio?.close();audio=undefined;musicOn=false;}
  const music=button('♫ เปิดเพลง',async()=>{if(musicOn){stopMusic();music.textContent='♫ เปิดเพลง';return;}try{audio=new (window.AudioContext||window.webkitAudioContext)();await audio.resume();musicOn=true;music.textContent='♫ ปิดเพลง';timer=setInterval(()=>{if(!audio||!alive())return;const tone=audio.createOscillator(),gain=audio.createGain();tone.type='sine';tone.frequency.value=[261.63,329.63,392,329.63,293.66,349.23,440,349.23][beat++%8];gain.gain.setValueAtTime(.018,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.35);tone.connect(gain);gain.connect(audio.destination);tone.start();tone.stop(audio.currentTime+.4);},450);}catch{stopMusic();notice.textContent='เปิดเสียงไม่สำเร็จ';}},nav);
