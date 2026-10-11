@@ -21,7 +21,7 @@ Both Side Quests are required projects for the rotation, despite their game labe
 
 ## Install and review
 
-1. Deploy **Worker** from `migration/cloudflare-foundation` first, then deploy **Pages** with output `frontend`. No new D1 schema migration is needed.
+1. Deploy **Worker** from `migration/cloudflare-foundation` first, then deploy **Pages** with output `frontend`. The story feature itself needs no schema change; the character feature now requires `0005_characters.sql` first (see [character-journeys.md](character-journeys.md)).
 2. Madeaw opens **จัดการ → ติดตั้ง / อัปเดตแคมเปญ 5 สัปดาห์**.
 3. The installer adds missing campaign IDs and updates the ten known curriculum briefs, preserving existing XP, status, badge and deadline settings. It never touches other IDs. Partial installs can be retried. More than 100 templates stops installation for review.
 4. Review each template in **แม่แบบภารกิจ**. Existing assignments retain their accepted reward snapshots.

@@ -22,6 +22,6 @@ The story endpoint is `/api/campaign/:partyId`; it requires an active scoped acc
 
 A stage is passed only when its assignment is completed by an authorized reviewer. GM starting approval, a submitted link, or 100% progress alone does not pass it. Attendance and required submissions remain human reviewed. Current stage auto-opens; previous unlocked stages collapse; hidden stages show only a remaining-door count.
 
-Deploy Worker before Pages, then use the admin campaign installer to update/add all ten templates. No SQL migration. Existing legacy records and historical rewards are retained. Existing campaign assignments keep their reward snapshot; their quest brief may reflect the newly updated template.
+Deploy Worker before Pages, then use the admin campaign installer to update/add all ten templates. For the character feature, apply `0005_characters.sql` first; see [character-journeys.md](character-journeys.md). Existing legacy records and historical rewards are retained. Existing campaign assignments keep their reward snapshot; their quest brief may reflect the newly updated template.
 
 Validation: backend tests cover party scope, hidden future story/catalog/assignment content, approved completion reveal, transitive dependencies and atomic rechecking. Local browser QA uses simulated students in local Miniflare/D1; screenshots contain no real student records.

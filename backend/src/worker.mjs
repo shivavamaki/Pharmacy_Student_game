@@ -71,7 +71,7 @@ return {
         return json({ error: 'authentication_unavailable' }, 503, cors);
       }
     }
-    if (/^\/api\/(summary|quests|campaign\/[^/]+|parties\/[^/]+\/(dashboard|accept)|assignments\/[^/]+(?:\/(approve|complete|daily|evidence))?|daily\/[^/]+\/review|evidence\/[^/]+\/review|gm-queue|assessments|recap(?:\/(draft|submit|analytics))?|admin\/(profiles|quests|parties|settings|audit|recaps))$/.test(path)) {
+    if (/^\/api\/(summary|character|journeys|quests|campaign\/[^/]+|parties\/[^/]+\/(dashboard|accept)|assignments\/[^/]+(?:\/(approve|complete|daily|evidence))?|daily\/[^/]+\/review|evidence\/[^/]+\/review|gm-queue|assessments|recap(?:\/(draft|submit|analytics))?|admin\/(profiles|quests|parties|settings|audit|recaps))$/.test(path)) {
       try {
         const profile = await authenticate(request, env, verifyToken);
         const version = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='api_operations'").first();

@@ -16,6 +16,8 @@ function fixture() {
     INSERT INTO assignments(id,quest_id,party_id,status,progress) VALUES
     ('aa','q','a','in_progress',25),('bb','q','b','in_progress',10),
     ('archive','q','a','archived',0),('oldquest','old','a','in_progress',0);`);
+  sql.exec(readFileSync(new URL('../migrations/0005_characters.sql',import.meta.url),'utf8'));
+  sql.exec("INSERT INTO characters(profile_id,name,class_key) SELECT id,display_name,'curious' FROM profiles");
   function prepare(query,values=[]) {
     return {bind(...v){return prepare(query,v);},async first(){return sql.prepare(query).get(...values)||null;},async all(){return {results:sql.prepare(query).all(...values)};}};
   }

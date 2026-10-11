@@ -1,3 +1,6 @@
+import {normalizeCharacter} from '../../frontend/character-model.mjs';
+import {characterFor,requireCharacter,characterGuard,partyAvatarSQL} from './characters.mjs';
+import {characterJourney} from './journeys.mjs';
 import {campaignPrerequisites,campaignRequirements,campaignQuestIds,campaignAllowed,campaignGuard,campaignView} from './campaign.mjs';
 import {trainingDates} from './enrollment-fields.mjs';
 import { AuthError } from './auth.mjs';
@@ -30,7 +33,7 @@ async function assignment(db,p,assignmentId,mode='read'){
  if(mode!=='read'||p.role==='student')await requireCampaignStage(db,row.party_id,row.quest_id);
  return row;
 }
-function assignmentGuard(p,a,mode){const stage=campaignGuard(a.quest_id,a.party_id);return {sql:`EXISTS(SELECT 1 FROM assignments a JOIN parties p ON p.id=a.party_id JOIN quests q ON q.id=a.quest_id WHERE a.id=? AND a.version=? AND a.status=? AND q.status!='archived' AND ${scopeSQL('p',mode)} ${mode==='review'?"AND (?='admin' OR a.assigned_gm_profile_id=?)":''}) AND (${stage.sql})`,args:[a.id,a.version,a.status,...scopeArgs(p,mode),...(mode==='review'?[p.role,p.id]:[]),...stage.args]};}
+function assignmentGuard(p,a,mode){const stage=campaignGuard(a.quest_id,a.party_id);const avatar=p.role==='student'?characterGuard(p):{sql:'1=1',args:[]};return {sql:`EXISTS(SELECT 1 FROM assignments a JOIN parties p ON p.id=a.party_id JOIN quests q ON q.id=a.quest_id WHERE a.id=? AND a.version=? AND a.status=? AND q.status!='archived' AND ${scopeSQL('p',mode)} ${mode==='review'?"AND (?='admin' OR a.assigned_gm_profile_id=?)":''}) AND (${stage.sql}) AND (${avatar.sql})`,args:[a.id,a.version,a.status,...scopeArgs(p,mode),...(mode==='review'?[p.role,p.id]:[]),...stage.args,...avatar.args]};}
 async function completedCampaign(db,partyId){return new Set((await all(db,"SELECT DISTINCT quest_id FROM assignments WHERE party_id=? AND status='completed'",partyId)).map(a=>a.quest_id));}
 async function requireCampaignStage(db,partyId,questId){if(campaignRequirements[questId]&&!campaignAllowed(questId,await completedCampaign(db,partyId)))fail('campaign_stage_locked',409);}
 function studentCampaignFilter(p){if(p.role!=='student')return{sql:'1=1',args:[]};const requirements=JSON.stringify(Object.fromEntries(campaignQuestIds.map(id=>[id,campaignPrerequisites(id)])));return{sql:`(NOT EXISTS(SELECT 1 FROM json_each(?) r WHERE r.key=q.id) OR EXISTS(SELECT 1 FROM json_each(?) r WHERE r.key=q.id AND (json_array_length(r.value)=0 OR EXISTS(SELECT 1 FROM parties p WHERE ${scopeSQL('p')} AND NOT EXISTS(SELECT 1 FROM json_each(r.value) needed WHERE NOT EXISTS(SELECT 1 FROM assignments ca WHERE ca.party_id=p.id AND ca.quest_id=needed.value AND ca.status='completed'))))))`,args:[requirements,requirements,...scopeArgs(p)]};}
@@ -70,12 +73,23 @@ export async function gameAPI(request,db,p,path){
  hash=await fingerprint(path,body);const previous=await replay(db,p,key,hash);if(previous)return previous;
  }
  const [root,target,action]=parts;
+ if(p.role==='student'&&['quests','campaign','parties','assignments','daily','evidence'].includes(root))await requireCharacter(db,p);
+ if(root==='character'&&parts.length===1){
+  const current=await characterFor(db,p.id);
+  if(method==='GET'){const previous=await first(db,'SELECT answers_json FROM recap_responses WHERE profile_id=? ORDER BY submitted_at DESC,id DESC LIMIT 1',p.id);let suggested=null;if(previous)try{const recap=normalizeRecap(JSON.parse(previous.answers_json));suggested={classKey:recap.profile.character,why:recap.answers.character.why.slice(0,1000),goal:recap.answers.skill.skillToImprove.slice(0,1000)};}catch{}return{character:current,suggested};}
+  let character;try{character=normalizeCharacter(body);}catch{fail('invalid_character',400);}
+  if(current&&body.version!==current.version)fail('state_changed',409);
+  const guard=current?{sql:'EXISTS(SELECT 1 FROM characters WHERE profile_id=? AND version=?)',args:[p.id,current.version]}:{sql:'NOT EXISTS(SELECT 1 FROM characters WHERE profile_id=?)',args:[p.id]};
+  const c=character;return mutate(db,p,key,hash,guard,[stmt(db,'INSERT INTO characters(profile_id,name,class_key,skin,hair,hairstyle,cloak,why,goal) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(profile_id) DO UPDATE SET name=excluded.name,class_key=excluded.class_key,skin=excluded.skin,hair=excluded.hair,hairstyle=excluded.hairstyle,cloak=excluded.cloak,why=excluded.why,goal=excluded.goal,version=characters.version+1,updated_at=CURRENT_TIMESTAMP',p.id,c.name,c.classKey,c.skin,c.hair,c.hairstyle,c.cloak,c.why,c.goal),stmt(db,'UPDATE profiles SET character_class=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',c.classKey,p.id)],{ok:true},'character.save',p.id);
+ }
+ if(root==='journeys'&&parts.length===1&&method==='GET')return characterJourney(db,p);
+
  if(root==='summary'&&parts.length===1&&method==='GET'){
  const profile=await first(db,'SELECT id,display_name displayName,role,university,rotation,character_class characterClass FROM profiles WHERE id=?',p.id);
  const xp=await first(db,'SELECT COALESCE((SELECT SUM(xp) FROM xp_awards WHERE profile_id=?),0)+COALESCE((SELECT SUM(xp) FROM historical_xp WHERE profile_id=?),0) AS total',p.id,p.id);
  const badges=await all(db,'SELECT badge_name,created_at FROM badge_awards WHERE profile_id=? UNION ALL SELECT badge_name,created_at FROM historical_badges WHERE profile_id=? ORDER BY created_at DESC LIMIT 101',p.id,p.id);
  const xpLog=await all(db,"SELECT id,xp,'Quest completed' reason,created_at FROM xp_awards WHERE profile_id=? UNION ALL SELECT id,xp,reason,created_at FROM historical_xp WHERE profile_id=? ORDER BY created_at DESC LIMIT 101",p.id,p.id);
- return {profile,xp:xp.total,level:Math.floor(xp.total/150)+1,badges:page(badges),xpLog:page(xpLog)};
+ return {profile,character:await characterFor(db,p.id),xp:xp.total,level:Math.floor(xp.total/150)+1,badges:page(badges),xpLog:page(xpLog)};
  }
  if(root==='quests'&&parts.length===1&&method==='GET'){
  const visible=studentCampaignFilter(p);return page(await all(db,`SELECT q.id,q.name,q.objective,q.quest_type,q.xp_reward,q.metadata_json FROM quests q WHERE q.status='available' AND ${visible.sql} ORDER BY q.name,q.id LIMIT 101`,...visible.args));
@@ -87,14 +101,14 @@ export async function gameAPI(request,db,p,path){
  return {party:team,members:page(members),assignments:page(p.role==='student'?tasks.filter(a=>campaignAllowed(a.quest_id,completed)):tasks),campaignAllowedIds:campaignQuestIds.filter(id=>campaignAllowed(id,completed)),canReview:reviewer(p)&&(p.role==='admin'||team.gm_profile_id===p.id),canWrite:p.role==='admin'||p.role==='student'};
  }
  if(root==='parties'&&target&&action==='accept'&&parts.length===3&&method==='POST'){
- const team=await party(db,p,target,'write');const quest=await first(db,"SELECT * FROM quests WHERE id=? AND status='available'",id(body.questId));if(!quest)fail('quest_not_available',409);await requireCampaignStage(db,team.id,quest.id);
+ const team=await party(db,p,target,'write');await requireCharacter(db,p);const ready=await first(db,`SELECT ${partyAvatarSQL} ready`,team.id);if(!ready.ready)fail('party_avatar_required',409);const quest=await first(db,"SELECT * FROM quests WHERE id=? AND status='available'",id(body.questId));if(!quest)fail('quest_not_available',409);await requireCampaignStage(db,team.id,quest.id);
  const existing=await first(db,"SELECT id FROM assignments WHERE party_id=? AND quest_id=? AND status NOT IN ('completed','archived')",team.id,quest.id);if(existing)fail('already_assigned',409);
  const members=await all(db,"SELECT m.profile_id FROM party_members m JOIN profiles u ON u.id=m.profile_id WHERE m.party_id=? AND u.status='active' LIMIT 101",team.id);if(!members.length||members.length>100)fail('invalid_party_members',409);
  const roles=body.partyRoles||{};jsonObject(roles,8000);for(const [member,role]of Object.entries(roles)){if(!members.some(m=>m.profile_id===member))fail();text(role,120,true);}
  const metadata=JSON.parse(quest.metadata_json);const days=Number.isInteger(metadata.defaultDeadlineDays)?Math.min(365,Math.max(1,metadata.defaultDeadlineDays)):3;
  const taskId=crypto.randomUUID();const deadline=new Date(Date.now()+days*86400000).toISOString();
  const guard=partyGuard(p,team.id,'write');guard.sql+=` AND EXISTS(SELECT 1 FROM quests WHERE id=? AND status='available' AND xp_reward=?) AND NOT EXISTS(SELECT 1 FROM assignments WHERE party_id=? AND quest_id=? AND status NOT IN ('completed','archived'))`;
- guard.args.push(quest.id,quest.xp_reward,team.id,quest.id);const stage=campaignGuard(quest.id,team.id);guard.sql+=` AND (${stage.sql})`;guard.args.push(...stage.args);
+ guard.args.push(quest.id,quest.xp_reward,team.id,quest.id);const stage=campaignGuard(quest.id,team.id);guard.sql+=` AND (${stage.sql})`;guard.args.push(...stage.args);guard.sql+=` AND EXISTS(SELECT 1 FROM characters WHERE profile_id=?) AND ${partyAvatarSQL}`;guard.args.push(p.id,team.id);
  return mutate(db,p,key,hash,guard,[
  stmt(db,"INSERT INTO assignments(id,quest_id,party_id,assigned_gm_profile_id,status,deadline,accepted_at,party_roles_json,reward_xp,reward_badge) VALUES(?,?,?,?,'waiting_gm_approval',?,CURRENT_TIMESTAMP,?,?,?)",taskId,quest.id,team.id,team.gm_profile_id,deadline,JSON.stringify(roles),quest.xp_reward,text(metadata.badgeReward,200)||null),
  stmt(db,"INSERT INTO assignment_participants SELECT ?,m.profile_id FROM party_members m JOIN profiles u ON u.id=m.profile_id WHERE m.party_id=? AND u.status='active'",taskId,team.id)
@@ -156,8 +170,8 @@ export async function gameAPI(request,db,p,path){
  patches:await all(db,"SELECT j.value label,COUNT(*) count FROM recap_responses r,json_each(r.answers_json,'$.answers.patch.patchRequests') j GROUP BY j.value ORDER BY count DESC LIMIT 100")
  };}
  if(['draft','submit'].includes(target)&&method==='POST'){
- let recap;try{recap=normalizeRecap(body.response);}catch{fail('invalid_recap',400);}const results=calculateRecapResult(recap);const data=JSON.stringify({...recap,results});
- const guard={sql:'1',args:[]};
+ await requireCharacter(db,p);const currentCharacter=await characterFor(db,p.id);let recap;try{recap=normalizeRecap({...body.response,profile:{...body.response?.profile,character:currentCharacter.classKey}});}catch{fail('invalid_recap',400);}const results=calculateRecapResult(recap);const data=JSON.stringify({...recap,results});
+ const guard={sql:'EXISTS(SELECT 1 FROM characters WHERE profile_id=? AND version=?)',args:[p.id,currentCharacter.version]};
  if(target==='draft')return mutate(db,p,key,hash,guard,[stmt(db,'INSERT INTO recap_drafts(profile_id,answers_json) VALUES(?,?) ON CONFLICT(profile_id) DO UPDATE SET answers_json=excluded.answers_json,updated_at=CURRENT_TIMESTAMP',p.id,data)],{ok:true,results},'recap.draft',p.id);
  if(!recap.profile.character)fail('recap_incomplete',400);
  const responseId=crypto.randomUUID();return mutate(db,p,key,hash,guard,[stmt(db,'INSERT INTO recap_responses(id,profile_id,idempotency_key,answers_json) VALUES(?,?,?,?)',responseId,p.id,key,data),stmt(db,'DELETE FROM recap_drafts WHERE profile_id=?',p.id)],{ok:true,responseId,results},'recap.submit',responseId);

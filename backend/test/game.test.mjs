@@ -7,11 +7,12 @@ import { createWorker } from '../src/worker.mjs';
 import { emptyRecap } from '../../frontend/recap-model.mjs';
 import { gameRequest } from '../../frontend/game-client.mjs';
 function fixture(){
- const sql=new DatabaseSync(':memory:');for(const migration of ['0001_foundation.sql','0002_game.sql','0004_student_enrollment.sql'])sql.exec(readFileSync(new URL('../migrations/'+migration,import.meta.url),'utf8'));
+ const sql=new DatabaseSync(':memory:');for(const migration of ['0001_foundation.sql','0002_game.sql','0004_student_enrollment.sql','0005_characters.sql'])sql.exec(readFileSync(new URL('../migrations/'+migration,import.meta.url),'utf8'));
  sql.exec(`INSERT INTO profiles(id,firebase_uid,display_name,role,status) VALUES('admin','admin','Admin','admin','active'),('gm','gm','GM','gm','active'),('othergm','othergm','Other GM','gm','active'),('preceptor','preceptor','Preceptor','preceptor','active'),('one','one','One','student','active'),('two','two','Two','student','active');
  INSERT INTO parties(id,name,gm_profile_id) VALUES('a','A','gm'),('b','B','othergm'),('c','C','preceptor');
  INSERT INTO party_members VALUES('a','one'),('b','two'),('c','two');
  INSERT INTO quests(id,name,xp_reward,status,metadata_json) VALUES('q','Quest',100,'available','{"badgeReward":"Hero","defaultDeadlineDays":3}'),('locked','Locked',200,'locked','{}');`);
+ sql.exec("INSERT INTO characters(profile_id,name,class_key) SELECT id,display_name,'curious' FROM profiles");
  let beforeBatch;
  const prepare=(query,values=[])=>({bind(...v){return prepare(query,v);},async first(){return sql.prepare(query).get(...values)||null;},async all(){return{results:sql.prepare(query).all(...values)};},execute(){const s=sql.prepare(query);return /RETURNING|^SELECT/i.test(query)?{results:s.all(...values),meta:{changes:0}}:{results:[],meta:{changes:Number(s.run(...values).changes)}};}});
  const db={prepare,async batch(statements){beforeBatch?.();beforeBatch=null;sql.exec('BEGIN');try{const results=statements.map(s=>s.execute());sql.exec('COMMIT');return results;}catch(e){sql.exec('ROLLBACK');throw e;}}};
@@ -63,3 +64,20 @@ test('campaign hides future stories, quests and assignments; only scoped GM comp
   assert.ok(!(await f.call('one','/parties/a/dashboard')).assignments.items.some(a=>a.id==='future'));await f.denied('one','/assignments/future',undefined,409);
  }finally{f.sql.close();}
 });
+
+test('avatar creation is mandatory, owned, validated and rechecked atomically',async()=>{const f=fixture();try{
+ f.sql.exec("DELETE FROM characters WHERE profile_id='one'");for(const path of ['/quests','/campaign/a','/parties/a/dashboard'])await assert.rejects(()=>f.call('one',path),e=>e.code==='avatar_required');await assert.rejects(()=>f.call('one','/parties/a/accept',{questId:'q'}),e=>e.code==='avatar_required');
+ const avatar={name:'New Hero',classKey:'counselor',skin:'deep',hair:'silver',hairstyle:'braid',cloak:'teal',why:'I like counselling',goal:'Communication',profileId:'two',role:'admin',xp:9999};await f.call('one','/character',avatar,'avatar-key-001');await f.call('one','/character',avatar,'avatar-key-001');
+ assert.equal((await f.call('one','/character')).character.classKey,'counselor');assert.equal((await f.call('two','/character')).character.name,'Two');assert.equal((await f.call('one','/summary')).xp,0);assert.equal(f.sql.prepare("SELECT role FROM profiles WHERE id='one'").get().role,'student');
+ await f.denied('one','/character',{...avatar,version:0,skin:'<script>'},400);await f.call('one','/character',{...avatar,name:'Updated',version:0});await f.denied('one','/character',{...avatar,version:0},409);
+ f.setBeforeBatch(()=>f.sql.exec("DELETE FROM characters WHERE profile_id='one'"));await f.denied('one','/parties/a/accept',{questId:'q'},409);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM assignments').get().n,0);
+}finally{f.sql.close();}});
+test('new party acceptance requires each active student avatar',async()=>{const f=fixture();try{f.sql.exec("INSERT INTO party_members VALUES('a','two');DELETE FROM characters WHERE profile_id='two'");await assert.rejects(()=>f.call('one','/parties/a/accept',{questId:'q'}),e=>e.code==='party_avatar_required');f.sql.exec("UPDATE profiles SET status='inactive' WHERE id='two'");await accepted(f);}finally{f.sql.close();}});
+test('Adventure Journeys aggregates all personal scores, historical XP/badges and earned achievements',async()=>{const f=fixture();try{
+ const id=await reviewed(f);await f.call('gm','/assignments/'+id+'/complete',{});
+ f.sql.exec("INSERT INTO quests(id,name) VALUES('main-week-01','Training');INSERT INTO historical_xp(id,profile_id,quest_id,xp,created_at) VALUES('hx','one','main-week-01',200,CURRENT_TIMESTAMP);INSERT INTO historical_badges(id,profile_id,badge_name,created_at) VALUES('hb','one','Hero',CURRENT_TIMESTAMP);INSERT INTO assessments(id,profile_id,party_id,assessment_type,score,max_score,preceptor_profile_id) VALUES('s1','one','a','Midterm',80,100,'gm'),('s2','one','a','Final',9,10,'gm'),('s3','two','b','Other',0,100,'othergm')");
+ const response=emptyRecap();response.profile.character='detective';response.answers.skill.unlockedSkills=['Patient Counseling'];response.results.questScore=9999;await f.call('one','/recap/submit',{response});
+ const data=await f.call('one','/journeys');assert.equal(data.xp,300);assert.equal(data.level,3);assert.equal(data.badgeStats.awards,2);assert.equal(data.badgeStats.unique_badges,1);assert.equal(data.badges.items[0].award_count,2);assert.equal(data.assessmentStats.score,89);assert.equal(data.assessmentStats.max_score,110);assert.equal(data.assessmentStats.percentage,80.9);assert.equal(data.assessments.items.length,2);assert.ok(data.achievements.some(a=>a.key==='main-week-01'));assert.ok(!data.achievements.some(a=>a.key==='boss-soap-presentation'));assert.ok(data.reflectionStats.latest.score<=100);assert.equal(data.reflectionStats.latest.characterKey,'curious');assert.deepEqual(data.selfReportedSkills,['Patient Counseling']);assert.equal((await f.call('two','/journeys')).xp,0);
+ for(let i=0;i<105;i++)f.sql.prepare("INSERT INTO historical_xp(id,profile_id,xp,created_at) VALUES(?,'one',1,CURRENT_TIMESTAMP)").run('extra-xp-'+i);assert.equal((await f.call('one','/journeys')).xp,405);
+}catch(e){throw e;}finally{f.sql.close();}});
+test('missing character migration is identified without mutating existing data',async()=>{const f=fixture();try{f.sql.exec('DROP TABLE characters');await assert.rejects(()=>f.call('one','/character'),e=>e.code==='character_migration_required'&&e.status===503);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM profiles').get().n,6);}finally{f.sql.close();}});
