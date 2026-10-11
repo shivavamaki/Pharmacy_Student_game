@@ -1,0 +1,8 @@
+-- Original repository quest templates only; no demo accounts or passwords.
+INSERT INTO quests(id,name,objective,quest_type,xp_reward,status,metadata_json) VALUES
+('Q-MAIN-001','Orientation of the Pharmacy Guild','เรียนรู้โครงสร้างแผนก กติกา Campaign และบทบาทในโรงพยาบาล','main',30,'available','{"chapter":1,"category":"foundation","competencies":["Professional behavior"],"requiredEvidence":["Reflection","Checklist"],"badgeReward":"Guild Member","defaultDeadlineDays":2}'),
+('Q-MAIN-002','Medication Safety Shield','วิเคราะห์ medication error และสร้างแนวทางป้องกันความเสี่ยง','main',50,'available','{"chapter":1,"category":"safety","competencies":["Medication Safety","Root Cause Analysis"],"requiredEvidence":["Report","Reflection"],"badgeReward":"Safety Shield","defaultDeadlineDays":3}'),
+('Q-MAIN-003','ADR Hunter','ประเมิน ADR และวาง monitoring plan','main',50,'available','{"chapter":1,"category":"clinical","competencies":["ADR Evaluation"],"requiredEvidence":["Case Summary","Reflection"],"badgeReward":"ADR Hunter","defaultDeadlineDays":3}'),
+('Q-BOSS-001','The Knowledge Gatekeeper','Mini case, quiz และ reflection เพื่อผ่าน Chapter 1','boss',100,'locked','{"chapter":1,"category":"integration","competencies":["Integrated Knowledge"],"requiredEvidence":["Quiz Result","Reflection"],"badgeReward":"Academy Cleared","defaultDeadlineDays":1}'),
+('Q-SIDE-001','Medication Error Investigation','วิเคราะห์เหตุการณ์ medication error และเสนอแนวทางป้องกัน','side',35,'available','{"chapter":1,"category":"safety","competencies":["Medication Safety"],"requiredEvidence":["Report"],"badgeReward":"Safety Investigator","defaultDeadlineDays":3}')
+ON CONFLICT(id) DO NOTHING;

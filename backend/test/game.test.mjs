@@ -1,0 +1,148 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+import { gameAPI } from '../src/game.mjs';
+import { createWorker } from '../src/worker.mjs';
+import { emptyRecap } from '../../frontend/recap-model.mjs';
+import { gameRequest } from '../../frontend/game-client.mjs';
+function fixture(){
+ const sql=new DatabaseSync(':memory:');for(const migration of ['0001_foundation.sql','0002_game.sql','0004_student_enrollment.sql','0005_characters.sql','0006_quest_rewards.sql'])sql.exec(readFileSync(new URL('../migrations/'+migration,import.meta.url),'utf8'));
+ sql.exec(`INSERT INTO profiles(id,firebase_uid,display_name,role,status) VALUES('admin','admin','Admin','admin','active'),('gm','gm','GM','gm','active'),('othergm','othergm','Other GM','gm','active'),('preceptor','preceptor','Preceptor','preceptor','active'),('one','one','One','student','active'),('two','two','Two','student','active');
+ INSERT INTO parties(id,name,gm_profile_id) VALUES('a','A','gm'),('b','B','othergm'),('c','C','preceptor');
+ INSERT INTO party_members VALUES('a','one'),('b','two'),('c','two');
+ INSERT INTO quests(id,name,xp_reward,status,metadata_json) VALUES('q','Quest',100,'available','{"badgeReward":"Hero","defaultDeadlineDays":3}'),('locked','Locked',200,'locked','{}');`);
+ sql.exec("INSERT INTO characters(profile_id,name,class_key) SELECT id,display_name,'curious' FROM profiles");
+ let beforeBatch;
+ const prepare=(query,values=[])=>({bind(...v){return prepare(query,v);},async first(){return sql.prepare(query).get(...values)||null;},async all(){return{results:sql.prepare(query).all(...values)};},execute(){const s=sql.prepare(query);return /RETURNING|^SELECT/i.test(query)?{results:s.all(...values),meta:{changes:0}}:{results:[],meta:{changes:Number(s.run(...values).changes)}};}});
+ const db={prepare,async batch(statements){beforeBatch?.();beforeBatch=null;sql.exec('BEGIN');try{const results=statements.map(s=>s.execute());sql.exec('COMMIT');return results;}catch(e){sql.exec('ROLLBACK');throw e;}}};
+ const profiles={admin:{id:'admin',role:'admin'},gm:{id:'gm',role:'gm'},othergm:{id:'othergm',role:'gm'},preceptor:{id:'preceptor',role:'preceptor'},one:{id:'one',role:'student'},two:{id:'two',role:'student'}};
+ let key=0;
+ const call=(uid,path,body,requestKey)=>gameAPI(new Request('https://api.test/api'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','Idempotency-Key':requestKey||'test-key-'+(++key)},body:body===undefined?undefined:JSON.stringify(body)}),db,profiles[uid],'/api'+path);
+ const denied=async(uid,path,body,status=404)=>assert.rejects(()=>call(uid,path,body),e=>e.status===status);
+ return{sql,db,call,denied,profiles,setBeforeBatch(fn){beforeBatch=fn;}};
+}
+async function accepted(f){return(await f.call('one','/parties/a/accept',{questId:'q'})).assignmentId;}
+const daily={progressDate:'2026-10-10',currentTurn:'Practice done',progressPercent:40,risk:'green'};
+const evidence={title:'Report',url:'https://drive.google.com/file/d/test/view',evidenceType:'Link',reflectionNote:'Learning'};
+async function ready(f){const id=await accepted(f);await f.call('gm','/assignments/'+id+'/approve',{});return id;}
+async function reviewed(f){const id=await ready(f);const e=await f.call('one','/assignments/'+id+'/evidence',evidence);await f.call('gm','/evidence/'+e.evidenceId+'/review',{approved:true});return id;}
+test('acceptance snapshots members and rewards; locked and duplicate quests rejected',async()=>{const f=fixture();try{const id=await accepted(f);assert.equal((await f.call('one','/assignments/'+id)).assignment.reward_xp,100);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM assignment_participants').get().n,1);await f.denied('one','/parties/a/accept',{questId:'q'},409);await f.denied('one','/parties/a/accept',{questId:'locked'},409);await f.denied('two','/parties/a/accept',{questId:'q'});await f.denied('gm','/parties/a/accept',{questId:'q'});}finally{f.sql.close();}});
+test('GM and preceptor queues, detail and review are limited to assigned parties',async()=>{const f=fixture();try{const id=await accepted(f);assert.equal((await f.call('gm','/gm-queue')).items.length,1);assert.equal((await f.call('othergm','/gm-queue')).items.length,0);await f.denied('othergm','/assignments/'+id+'/approve',{});await f.denied('one','/assignments/'+id+'/approve',{});await f.call('gm','/assignments/'+id+'/approve',{});await f.denied('gm','/assignments/'+id+'/approve',{},409);const c=(await f.call('two','/parties/c/accept',{questId:'q'})).assignmentId;await f.call('preceptor','/assignments/'+c+'/approve',{});}finally{f.sql.close();}});
+test('progress validates range, enum and status and prevents cross-party submissions',async()=>{const f=fixture();try{const id=await accepted(f);await f.denied('one','/assignments/'+id+'/daily',daily,409);await f.call('gm','/assignments/'+id+'/approve',{});for(const patch of [{progressPercent:101},{progressPercent:'40'},{risk:'purple'},{progressDate:'bad'},{progressDate:'2026-02-30'},{currentTurn:''}])await f.denied('one','/assignments/'+id+'/daily',{...daily,...patch},400);await f.denied('two','/assignments/'+id+'/daily',daily);await f.call('one','/assignments/'+id+'/daily',daily);assert.equal((await f.call('one','/assignments/'+id)).assignment.progress,40);}finally{f.sql.close();}});
+test('evidence URLs forbid active content; revision and resubmission update task state',async()=>{const f=fixture();try{const id=await ready(f);for(const url of ['javascript:alert(1)','http://example.com','https://user:pass@example.com'])await f.denied('one','/assignments/'+id+'/evidence',{...evidence,url},400);const e=await f.call('one','/assignments/'+id+'/evidence',evidence);await f.call('gm','/evidence/'+e.evidenceId+'/review',{approved:false,feedback:'Revise'});assert.equal((await f.call('one','/assignments/'+id)).assignment.status,'revision_required');await f.call('one','/assignments/'+id+'/evidence',evidence);assert.equal(f.sql.prepare('SELECT review_status FROM evidence WHERE id=?').get(e.evidenceId).review_status,'superseded');}finally{f.sql.close();}});
+test('completion requires approved evidence; awards exactly once using trusted snapshot',async()=>{const f=fixture();try{const id=await ready(f);await f.denied('gm','/assignments/'+id+'/complete',{},409);const e=await f.call('one','/assignments/'+id+'/evidence',evidence);await f.denied('gm','/assignments/'+id+'/complete',{},409);await f.call('gm','/evidence/'+e.evidenceId+'/review',{approved:true});f.sql.exec("UPDATE quests SET xp_reward=9999;INSERT INTO party_members VALUES('a','two')");const result=await f.call('gm','/assignments/'+id+'/complete',{xp:9999,role:'admin'});assert.equal(result.xp,100);await f.call('gm','/assignments/'+id+'/complete',{});assert.deepEqual({...f.sql.prepare('SELECT profile_id,xp FROM xp_awards').get()},{profile_id:'one',xp:100});assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM badge_awards').get().n,1);assert.equal((await f.call('one','/summary')).xp,100);await f.denied('one','/assignments/'+id+'/daily',daily,409);}finally{f.sql.close();}});
+test('idempotency replays successful response and rejects changed data',async()=>{const f=fixture();try{const a=await f.call('one','/parties/a/accept',{questId:'q'},'fixed-key-001');const b=await f.call('one','/parties/a/accept',{questId:'q'},'fixed-key-001');assert.deepEqual(a,b);await assert.rejects(()=>f.call('one','/parties/a/accept',{questId:'locked'},'fixed-key-001'),e=>e.code==='idempotency_conflict');assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM audit_events').get().n,1);}finally{f.sql.close();}});
+test('constraint failure rolls back completion and every award and audit operation',async()=>{const f=fixture();try{const id=await reviewed(f);f.sql.exec("CREATE TRIGGER fail_badge BEFORE INSERT ON badge_awards BEGIN SELECT RAISE(ABORT,'forced failure');END");await assert.rejects(()=>f.call('gm','/assignments/'+id+'/complete',{}));assert.equal(f.sql.prepare('SELECT status FROM assignments WHERE id=?').get(id).status,'waiting_gm_review');assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM xp_awards').get().n,0);assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='quest.complete'").get().n,0);}finally{f.sql.close();}});
+test('authorization is rechecked inside transaction if membership or role changes after read',async()=>{for(const update of ["DELETE FROM party_members WHERE profile_id='one'","UPDATE profiles SET status='inactive' WHERE id='one'","UPDATE profiles SET role='admin' WHERE id='one'"]){const f=fixture();try{const id=await ready(f);f.setBeforeBatch(()=>f.sql.exec(update));await f.denied('one','/assignments/'+id+'/daily',daily,409);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM daily_progress').get().n,0);}finally{f.sql.close();}}});
+test('version guard prevents stale parallel completion from duplicating awards',async()=>{const f=fixture();try{const id=await reviewed(f);f.setBeforeBatch(()=>f.sql.exec('UPDATE assignments SET version=version+1'));await f.denied('gm','/assignments/'+id+'/complete',{},409);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM xp_awards').get().n,0);}finally{f.sql.close();}});
+test('assessments validate scores and assigned reviewer/student membership',async()=>{const f=fixture();try{const data={partyId:'a',profileId:'one',assessmentType:'Final',score:80,maxScore:100,rubric:{communication:80}};await f.call('gm','/assessments',data);await f.denied('othergm','/assessments',data);await f.denied('one','/assessments',data);await f.denied('gm','/assessments',{...data,score:101},400);assert.equal((await f.call('one','/assessments')).items.length,1);assert.equal((await f.call('two','/assessments')).items.length,0);}finally{f.sql.close();}});
+test('recap draft and response are per-account and server computes score stripping identity and credentials',async()=>{const f=fixture();try{const response=emptyRecap();response.profile.character='curious';response.answers.treasure.overallScore=8;response.results.questScore=9999;response.profile.firebase_uid='two';response.sessionToken='secret';await f.call('one','/recap/draft',{response});assert.equal((await f.call('two','/recap')).draft,null);const result=await f.call('one','/recap/submit',{response},'recap-key-001');assert.equal(result.results.questScore,24);assert.equal((await f.call('one','/recap')).draft,null);await f.call('one','/recap/submit',{response},'recap-key-001');assert.equal((await f.call('one','/recap')).responses.items.length,1);const stored=f.sql.prepare('SELECT answers_json FROM recap_responses').get().answers_json;assert.equal(JSON.parse(stored).sessionToken,undefined);assert.ok(!stored.includes('firebase_uid'));assert.equal((await f.call('two','/recap')).responses.items.length,0);await f.denied('gm','/recap/analytics',undefined,403);}finally{f.sql.close();}});
+test('recap invalid rating and forged options rejected',async()=>{const f=fixture();try{const response=emptyRecap();response.answers.preceptor.ratings.workload=99;await f.denied('one','/recap/draft',{response},400);response.answers.preceptor.ratings.workload=2;response.answers.skill.unlockedSkills=['invented'];await f.denied('one','/recap/draft',{response},400);}finally{f.sql.close();}});
+test('admin enrollment and party reassignment revoke previous GM scope',async()=>{const f=fixture();try{const id=await accepted(f);const party={id:'a',name:'New A',gmProfileId:'othergm',memberIds:['one'],status:'active'};await f.denied('one','/admin/parties',party,403);await f.call('admin','/admin/parties',party);await f.denied('gm','/assignments/'+id+'/approve',{});await f.call('othergm','/assignments/'+id+'/approve',{});await f.denied('admin','/admin/profiles',{id:'admin',displayName:'Admin',role:'student',status:'active'},409);await f.call('admin','/admin/profiles',{id:'new',displayName:'New',firebaseUid:'newuid',role:'student',status:'pending'});assert.equal(f.sql.prepare("SELECT status FROM profiles WHERE id='new'").get().status,'pending');}finally{f.sql.close();}});
+test('JSON content type, request size and idempotency key required on writes',async()=>{const f=fixture();try{for(const request of [new Request('https://api.test/api/recap/draft',{method:'POST',body:'{}'}),new Request('https://api.test/api/recap/draft',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),new Request('https://api.test/api/recap/draft',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':'test-key-001'},body:JSON.stringify({data:'x'.repeat(66000)})})])await assert.rejects(()=>gameAPI(request,f.db,f.profiles.one,'/api/recap/draft'),e=>[400,413,415].includes(e.status));}finally{f.sql.close();}});
+test('Worker checks authentication and origin before mutation and signals missing migration',async()=>{const f=fixture();try{const worker=createWorker(async uid=>uid),env={DB:f.db,FIREBASE_PROJECT_ID:'test',ALLOWED_ORIGIN:'https://site.test'};const res=await worker.fetch(new Request('https://api.test/api/summary',{headers:{Authorization:'Bearer one'}}),env);assert.equal(res.status,200);assert.equal((await worker.fetch(new Request('https://api.test/api/summary'),env)).status,401);assert.equal((await worker.fetch(new Request('https://api.test/api/recap/draft',{method:'POST',headers:{Origin:'https://bad.test',Authorization:'Bearer one'}}),env)).status,403);f.sql.exec('DROP TABLE api_operations');assert.equal((await(await worker.fetch(new Request('https://api.test/api/summary',{headers:{Authorization:'Bearer one'}}),env)).json()).error,'migration_required');}finally{f.sql.close();}});
+test('game client retries with same key, preserves API errors and fixes bearer destination',async()=>{let calls=[];const user={uid:'one',getIdToken:async()=>'id-token'};const fetcher=async(url,init)=>{calls.push({url,init});if(calls.length===1)throw Error('network');return Response.json({ok:true});};await assert.rejects(()=>gameRequest(user,'/recap/draft',{body:{test:1},fetcher}));await gameRequest(user,'/recap/draft',{body:{test:1},fetcher});assert.equal(calls[0].init.headers['Idempotency-Key'],calls[1].init.headers['Idempotency-Key']);assert.equal(calls[1].url,'https://pharmacy-guild-api-dev.shivavamaki.workers.dev/api/recap/draft');assert.equal(calls[1].init.headers.Authorization,'Bearer id-token');assert.equal(calls[1].init.credentials,'omit');await assert.rejects(()=>gameRequest(user,'/summary',{fetcher:async()=>Response.json({error:'migration_required'},{status:503})}),e=>e.code==='migration_required');});
+test('100-member party updates use bounded set queries within Free plan limits',async()=>{const f=fixture();try{const ids=Array.from({length:100},(_,i)=>'member-'+i);for(const id of ids)f.sql.prepare("INSERT INTO profiles(id,display_name) VALUES(?,?)").run(id,id);let queries=0;const original=f.db.prepare;function track(statement){return{bind(...args){return track(statement.bind(...args));},async first(){queries++;return statement.first();},async all(){queries++;return statement.all();},execute(){queries++;return statement.execute();}};}f.db.prepare=(...args)=>track(original(...args));await f.call('admin','/admin/parties',{id:'large',name:'Large',status:'active',gmProfileId:'gm',memberIds:ids});assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM party_members WHERE party_id='large'").get().n,100);assert.ok(queries<20,'bounded SQL count: '+queries);}finally{f.sql.close();}});
+
+test('campaign hides future stories, quests and assignments; only scoped GM completion unlocks next stage',async()=>{
+ const f=fixture();try{
+  for(const id of ['main-week-01','main-week-02','main-week-03','main-week-04','side-project-department','side-project-clinical','boss-mini-projects','boss-mini-academic','boss-soap-presentation','main-week-05'])f.sql.prepare("INSERT INTO quests(id,name,status) VALUES(?,?,'available')").run(id,id);
+  const story=await f.call('one','/campaign/a');assert.deepEqual(story.stages.map(s=>s.key),['training']);assert.ok(!JSON.stringify(story).includes('Sovereign'));await f.denied('two','/campaign/a');
+  assert.deepEqual((await f.call('one','/quests')).items.filter(q=>q.id.startsWith('main')).map(q=>q.id),['main-week-01']);
+  await f.denied('one','/parties/a/accept',{questId:'main-week-02'},409);
+  const id=(await f.call('one','/parties/a/accept',{questId:'main-week-01'})).assignmentId;
+  await f.call('gm','/assignments/'+id+'/approve',{});
+  assert.equal((await f.call('one','/campaign/a')).stages.length,1);
+  const e=await f.call('one','/assignments/'+id+'/evidence',evidence);await f.call('gm','/evidence/'+e.evidenceId+'/review',{approved:true});await f.denied('one','/assignments/'+id+'/complete',{});
+  await f.call('gm','/assignments/'+id+'/complete',{});
+  assert.deepEqual((await f.call('one','/campaign/a')).stages.map(s=>s.key),['training','opd']);assert.equal((await f.call('two','/campaign/b')).stages.length,1);
+  f.setBeforeBatch(()=>f.sql.exec("UPDATE assignments SET status='archived' WHERE id='"+id+"'"));
+  await f.denied('one','/parties/a/accept',{questId:'main-week-02'},409);
+  assert.equal(f.sql.prepare("SELECT count(*) n FROM assignments WHERE quest_id='main-week-02'").get().n,0);
+  f.sql.exec("INSERT INTO assignments(id,quest_id,party_id,status) VALUES('future','boss-soap-presentation','a','in_progress')");
+  assert.ok(!(await f.call('one','/parties/a/dashboard')).assignments.items.some(a=>a.id==='future'));await f.denied('one','/assignments/future',undefined,409);
+ }finally{f.sql.close();}
+});
+
+test('avatar creation is mandatory, owned, validated and rechecked atomically',async()=>{const f=fixture();try{
+ f.sql.exec("DELETE FROM characters WHERE profile_id='one'");for(const path of ['/quests','/campaign/a','/parties/a/dashboard'])await assert.rejects(()=>f.call('one',path),e=>e.code==='avatar_required');await assert.rejects(()=>f.call('one','/parties/a/accept',{questId:'q'}),e=>e.code==='avatar_required');
+ const avatar={name:'New Hero',classKey:'counselor',skin:'deep',hair:'silver',hairstyle:'braid',cloak:'teal',why:'I like counselling',goal:'Communication',profileId:'two',role:'admin',xp:9999};await f.call('one','/character',avatar,'avatar-key-001');await f.call('one','/character',avatar,'avatar-key-001');
+ assert.equal((await f.call('one','/character')).character.classKey,'counselor');assert.equal((await f.call('two','/character')).character.name,'Two');assert.equal((await f.call('one','/summary')).xp,0);assert.equal(f.sql.prepare("SELECT role FROM profiles WHERE id='one'").get().role,'student');
+ await f.denied('one','/character',{...avatar,version:0,skin:'<script>'},400);await f.call('one','/character',{...avatar,name:'Updated',version:0});await f.denied('one','/character',{...avatar,version:0},409);
+ f.setBeforeBatch(()=>f.sql.exec("DELETE FROM characters WHERE profile_id='one'"));await f.denied('one','/parties/a/accept',{questId:'q'},409);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM assignments').get().n,0);
+}finally{f.sql.close();}});
+test('new party acceptance requires each active student avatar',async()=>{const f=fixture();try{f.sql.exec("INSERT INTO party_members VALUES('a','two');DELETE FROM characters WHERE profile_id='two'");await assert.rejects(()=>f.call('one','/parties/a/accept',{questId:'q'}),e=>e.code==='party_avatar_required');f.sql.exec("UPDATE profiles SET status='inactive' WHERE id='two'");await accepted(f);}finally{f.sql.close();}});
+test('Adventure Journeys aggregates all personal scores, historical XP/badges and earned achievements',async()=>{const f=fixture();try{
+ const id=await reviewed(f);await f.call('gm','/assignments/'+id+'/complete',{});
+ f.sql.exec("INSERT INTO quests(id,name) VALUES('main-week-01','Training');INSERT INTO historical_xp(id,profile_id,quest_id,xp,created_at) VALUES('hx','one','main-week-01',200,CURRENT_TIMESTAMP);INSERT INTO historical_badges(id,profile_id,badge_name,created_at) VALUES('hb','one','Hero',CURRENT_TIMESTAMP);INSERT INTO assessments(id,profile_id,party_id,assessment_type,score,max_score,preceptor_profile_id) VALUES('s1','one','a','Midterm',80,100,'gm'),('s2','one','a','Final',9,10,'gm'),('s3','two','b','Other',0,100,'othergm')");
+ const response=emptyRecap();response.profile.character='detective';response.answers.skill.unlockedSkills=['Patient Counseling'];response.results.questScore=9999;await f.call('one','/recap/submit',{response});
+ const data=await f.call('one','/journeys');assert.equal(data.xp,300);assert.equal(data.level,3);assert.equal(data.badgeStats.awards,2);assert.equal(data.badgeStats.unique_badges,1);assert.equal(data.badges.items[0].award_count,2);assert.equal(data.assessmentStats.score,89);assert.equal(data.assessmentStats.max_score,110);assert.equal(data.assessmentStats.percentage,80.9);assert.equal(data.assessments.items.length,2);assert.ok(data.achievements.some(a=>a.key==='main-week-01'));assert.ok(!data.achievements.some(a=>a.key==='boss-soap-presentation'));assert.ok(data.reflectionStats.latest.score<=100);assert.equal(data.reflectionStats.latest.characterKey,'curious');assert.deepEqual(data.selfReportedSkills,['Patient Counseling']);assert.equal((await f.call('two','/journeys')).xp,0);
+ for(let i=0;i<105;i++)f.sql.prepare("INSERT INTO historical_xp(id,profile_id,xp,created_at) VALUES(?,'one',1,CURRENT_TIMESTAMP)").run('extra-xp-'+i);assert.equal((await f.call('one','/journeys')).xp,405);
+}catch(e){throw e;}finally{f.sql.close();}});
+test('missing character migration is identified without mutating existing data',async()=>{const f=fixture();try{f.sql.exec('DROP TABLE characters');await assert.rejects(()=>f.call('one','/character'),e=>e.code==='character_migration_required'&&e.status===503);assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM profiles').get().n,6);}finally{f.sql.close();}});
+
+test('once-only completed quest leaves party board, remains in history, and cannot be accepted again',async()=>{const f=fixture();try{
+ assert.ok((await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));
+ const id=await reviewed(f);await f.call('gm','/assignments/'+id+'/complete',{});
+ assert.ok(!(await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));
+ await assert.rejects(()=>f.call('one','/parties/a/accept',{questId:'q'}),e=>e.code==='quest_already_completed');
+ assert.equal((await f.call('one','/parties/a/dashboard')).assignments.items.find(a=>a.id===id).status,'completed');
+ // Another party may take the same template, but does not see this party's history.
+ assert.ok((await f.call('two','/parties/b/quest-board')).items.some(q=>q.id==='q'));await f.denied('two','/parties/a/quest-board');
+ f.sql.exec("UPDATE quests SET status='archived' WHERE id='q'");assert.equal((await f.call('one','/assignments/'+id)).assignment.status,'completed');
+ assert.equal((await f.call('one','/parties/a/dashboard')).assignments.items.length,1);
+ }finally{f.sql.close();}});
+
+test('explicit repeatability pays trusted XP and Gold once per completed round',async()=>{const f=fixture();try{
+ f.sql.exec(`UPDATE quests SET metadata_json='{"repeatable":true,"goldReward":45,"badgeReward":"Hero"}' WHERE id='q'`);
+ const id=await reviewed(f);await f.denied('one','/parties/a/accept',{questId:'q'},409);
+ f.sql.exec(`UPDATE quests SET xp_reward=200,metadata_json='{"repeatable":true,"goldReward":70}' WHERE id='q'`);
+ const result=await f.call('gm','/assignments/'+id+'/complete',{gold:9999,xp:9999},'gold-complete-001');assert.equal(result.xp,100);assert.equal(result.gold,45);
+ await f.call('gm','/assignments/'+id+'/complete',{gold:9999,xp:9999},'gold-complete-001');await f.call('gm','/assignments/'+id+'/complete',{});
+ assert.ok((await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));
+ const round2=await reviewed(f);await f.call('gm','/assignments/'+round2+'/complete',{});
+ assert.notEqual(round2,id);assert.equal((await f.call('one','/summary')).xp,300);assert.equal((await f.call('one','/summary')).gold,115);assert.equal((await f.call('one','/journeys')).goldLog.items.length,2);assert.equal((await f.call('two','/summary')).gold,0);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM gold_awards').get().n,2);
+ // Applying the migration again preserves balances and snapshots.
+ f.sql.exec(readFileSync(new URL('../migrations/0006_quest_rewards.sql',import.meta.url),'utf8'));assert.equal((await f.call('one','/summary')).gold,115);
+ }finally{f.sql.close();}});
+
+test('Gold failure rolls back completion, XP, badges and idempotency entry',async()=>{const f=fixture();try{
+ f.sql.exec(`UPDATE quests SET metadata_json='{"goldReward":20,"badgeReward":"Hero"}' WHERE id='q'`);const id=await reviewed(f);
+ f.sql.exec("CREATE TRIGGER fail_gold BEFORE INSERT ON gold_awards BEGIN SELECT RAISE(ABORT,'forced gold failure');END");
+ await assert.rejects(()=>f.call('gm','/assignments/'+id+'/complete',{},'gold-failure-key'));
+ assert.equal(f.sql.prepare('SELECT status FROM assignments WHERE id=?').get(id).status,'waiting_gm_review');
+ for(const table of ['xp_awards','gold_awards','badge_awards'])assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM '+table).get().n,0);
+ assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM api_operations WHERE idempotency_key='gold-failure-key'").get().n,0);
+ }finally{f.sql.close();}});
+
+test('repeat policy changes during acceptance cause atomic rollback; admin validates reward metadata',async()=>{const f=fixture();try{
+ f.setBeforeBatch(()=>f.sql.exec(`UPDATE quests SET metadata_json='{"goldReward":10,"repeatable":true}' WHERE id='q'`));await f.denied('one','/parties/a/accept',{questId:'q'},409);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM assignments').get().n,0);
+ const q={id:'new',name:'New',questType:'side',xpReward:12,status:'available',goldReward:8,repeatable:true};
+ for(const patch of [{goldReward:-1},{goldReward:1.5},{goldReward:'10'},{repeatable:'true'},{goldReward:100001}])await f.denied('admin','/admin/quests',{...q,...patch},400);
+ await f.call('admin','/admin/quests',q);const meta=JSON.parse(f.sql.prepare("SELECT metadata_json FROM quests WHERE id='new'").get().metadata_json);assert.equal(meta.goldReward,8);assert.equal(meta.repeatable,true);
+ }finally{f.sql.close();}});
+
+test('done history cannot displace active tasks; once-only guard checks all history',async()=>{const f=fixture();try{
+ for(let i=0;i<105;i++)f.sql.prepare("INSERT INTO assignments(id,quest_id,party_id,status,created_at) VALUES(?,'q','a','completed','2030-01-01')").run('old-'+i);
+ f.sql.exec("INSERT INTO assignments(id,quest_id,party_id,status,created_at) VALUES('current','locked','a','in_progress','2020-01-01')");
+ const dashboard=await f.call('one','/parties/a/dashboard');assert.ok(dashboard.assignments.items.some(a=>a.id==='current'));assert.equal(dashboard.assignments.hasMore,true);
+ assert.ok(!(await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));await f.denied('one','/parties/a/accept',{questId:'q'},409);
+ f.sql.exec("DELETE FROM assignments;INSERT INTO assignments(id,quest_id,party_id,status) VALUES('archived-done','q','a','archived');INSERT INTO xp_awards(id,assignment_id,profile_id,xp,approved_by) VALUES('earned','archived-done','one',100,'gm')");
+ assert.ok(!(await f.call('one','/parties/a/quest-board')).items.some(q=>q.id==='q'));await f.denied('one','/parties/a/accept',{questId:'q'},409);
+ }finally{f.sql.close();}});
+
+test('Worker identifies missing Gold migration before serving game data',async()=>{const f=fixture();try{
+ f.sql.exec('DROP TABLE gold_awards');const worker=createWorker(async uid=>uid);const response=await worker.fetch(new Request('https://api.test/api/summary',{headers:{Authorization:'Bearer one'}}),{DB:f.db,FIREBASE_PROJECT_ID:'test'});
+ assert.equal(response.status,503);assert.equal((await response.json()).error,'reward_migration_required');assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM profiles').get().n,6);
+ }finally{f.sql.close();}});
+
+test('party acceptance preflight lists active students missing avatars and the requester requirement',async()=>{const f=fixture();try{
+ f.sql.exec("INSERT INTO party_members VALUES('a','two');DELETE FROM characters WHERE profile_id IN ('two','admin')");
+ const student=await f.call('one','/parties/a/dashboard');assert.deepEqual(student.acceptance,{requiresAvatar:false,missingAvatarNames:['Two']});
+ const admin=await f.call('admin','/parties/a/dashboard');assert.equal(admin.acceptance.requiresAvatar,true);
+ f.sql.exec("UPDATE profiles SET status='inactive' WHERE id='two'");assert.deepEqual((await f.call('one','/parties/a/dashboard')).acceptance.missingAvatarNames,[]);
+ await accepted(f);
+}finally{f.sql.close();}});
