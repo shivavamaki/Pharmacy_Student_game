@@ -5,6 +5,8 @@ body{color:var(--ink);font-family:Tahoma,system-ui,sans-serif;background:#06100c
 body:before{display:none}a{color:#98eec3}h1,h2,h3,h4,.game-card h4{color:#d6ffe1}
 h1{font:700 clamp(31px,4vw,54px)/1.2 var(--mono);letter-spacing:0;text-shadow:3px 3px #010e08}
 h1 small{display:block;margin-top:12px;color:#f4d48e;font:700 14px/1.7 var(--mono);letter-spacing:4px}
+.dos-enter{display:inline-flex;gap:10px;align-items:center;width:fit-content;max-width:100%;margin:14px 0 18px;padding:12px 17px;color:#06130a;background:#a3fab8;border:2px solid #d2ffe0;font:700 14px/1.6 var(--mono);text-decoration:none;box-shadow:4px 4px 0 #010805}
+.dos-enter:hover,.dos-enter:focus-visible{color:#07180e;background:#f2d38b}
 .dos-accent{color:#80fca1}
 .dos-command{background:#020805;color:#86ffa9;border:2px solid #479867;padding:12px 15px;margin-bottom:22px;overflow-wrap:anywhere;font:700 clamp(12px,2vw,18px)/1.7 var(--mono);box-shadow:inset 0 0 0 2px #071810}
 .dos-command>span:first-child{color:#f2d38b}
