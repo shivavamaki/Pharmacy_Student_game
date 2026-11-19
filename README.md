@@ -1,6 +1,6 @@
 # Pharmacy Guild — Chronicles of the Four Seals (JRPG Edition)
 
-This branch is a separate, experimental classic JRPG version of the current Pharmacy Guild, not a replacement for the deployed app.
+This branch is a separate, experimental classic JRPG version of the current Pharmacy Guild, not a replacement for the deployed app. **New co-op design:** leader-only map movement, 1–6 members voting on each turn-based team battle action, separate personal assignment permissions.
 
 ## Entrypoints
 
@@ -23,3 +23,7 @@ Node.js 24+ required. Run npm ci and npm test. Deploy the branch to a separate C
 ## Next steps
 
 See docs/jrpg-game-design.md for teaching objectives, acts, class mapping, encounter mechanics, safety criteria and rollout phases.
+
+## Voting status
+
+The walkable demo simulates six ballots **within one browser** for review. It does not connect six actual students online. The server-side voting domain model and tests are present, but Durable Object + WebSockets and real identity verification are still pending. The action with the most votes wins; ties use the leader's vote when tied, otherwise Guard.

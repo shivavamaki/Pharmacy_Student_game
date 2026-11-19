@@ -4,7 +4,7 @@
 
 ## Multiplayer requirement (updated 2026-11-19)
 
-The completed JRPG must provide **live synchronous online cooperative play for 1–6 real players per room**, with an instructor-approved **Party Leader**. Only the leader selects map destinations and moves the entire team together. The leader initiates shared story encounters and combat, while **each member still plays their own battle turn**. Students independently submit assignments and evidence. Battles remain strictly turn-based, with server-owned turn order, answers, timers, room capacity and outcome. Current Phaser walkable demo remains solo; online room transport is not implemented yet. See [jrpg-online-coop.md](jrpg-online-coop.md).
+The completed JRPG must provide **live synchronous online cooperative play for 1–6 real players per room**, with an instructor-approved **Party Leader**. Only the leader selects map destinations and moves the entire team together. The leader initiates shared story encounters and combat, while **every connected party member votes for the next team combat action**. The most-voted command is executed once for the whole party, then the enemy acts if the fight continues. Students independently submit assignments and evidence. Battles remain strictly turn-based, with one shared action per voted round, server-owned ballots, answers, timers, room capacity and outcome. Current Phaser walkable demo remains solo; online room transport is not implemented yet. See [jrpg-online-coop.md](jrpg-online-coop.md).
 
 ## Vision and audience
 
@@ -17,7 +17,7 @@ A five-week pharmacy clerkship becomes an adventure across the city of **Arogea 
 1. **At the Guild:** sign in through existing Firebase Auth, load D1 character and party, read the currently revealed story and GM-approved quest board.
 2. **Explore:** navigate a low-resolution tile world (planned Phaser + TypeScript), speak to NPCs, discover clues and collect **story-only** objects. On touch devices: virtual D-pad/tap-to-move; desktop: arrows/WASD.
 3. **Encounter:** a problem-spirit (e.g. Unclear Order, Broken Handoff), **not a patient**, interrupts progress. Enter a classic turn-based battle panel, ideally 320x180 internal rendering with readable responsive HTML text.
-4. **Investigate → decide:** the party uses S/O/A/P skills, inspects a fictional case card, makes one or more evidence-based choices and can always **Consult Preceptor / Guard** rather than guess. Right choices overcome uncertainty; wrong choices trigger immediate explanations without rewarding guessing.
+4. **Investigate → vote → decide:** every student independently selects a proposed S/O/A/P action or Guard; the team ballot selects the most-voted action, followed by a fictional case card or the next battle round. No individual can unilaterally force an outcome, except that the leader's vote breaks an exact tie. Right choices overcome uncertainty; wrong choices trigger immediate explanations without rewarding guessing.
 5. **Reflect and submit:** combat victories unlock narrative and **practice-only** loot; official quest completion still requires participation, case notes, presentations and GM review, followed by trusted Worker/D1 XP/Gold/badge awards.
 6. **Return to town:** upgrade only cosmetics and approved training assets; reflect in the existing Adventure Journeys journal. Never sell real medications or teach unsupervised actions.
 
@@ -68,7 +68,7 @@ All jobs can use **Listen, Verify, Assess, Plan, Counsel, Consult/Guard**. Cosme
 
 - **Encounter identity:** destroy the *Fog of Confusion* rather than a human, illness, or substance. Battle outcomes are **practice simulations**.
 - **Stats:** Party HP = morale (not patient health); MP = focus; foe HP = uncertainty/fog. Numbers exist only for game feel.
-- **Turn order:** choose party action → read fictional clue/card → resolve question → enemy's confusion counterattack. Guard/Consult restores focus and lowers incoming damage.
+- **Turn order:** open shared action ballot → every eligible player votes (or timeout) → resolve winning team action once → enemy's confusion counterattack if still active → next ballot. Guard/Consult restores focus and lowers incoming damage.
 - **Action chain:** **Listen (S) → Verify (O) → Assess (A) → Plan (P)**; other tools include Counsel and Guard. A correct case decision is required before Assess in the prototype.
 - **Win state:** reduce uncertainty to zero with all four seals assembled. SOAP's final encounter adds a **Four-Seal Synthesis** finisher.
 - **Failure state:** morale depleted means return to camp and retry with a hint; no loss of real XP, no record of poor clinical competency based on a demo.

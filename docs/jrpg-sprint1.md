@@ -67,3 +67,7 @@ This change is local to the walkable preview. In the future six-player online ve
 ## Leader-controlled team movement (next gameplay iteration)
 
 World navigation is now specified as a shared party action: the designated leader selects destinations; the whole party follows one obstacle-checked path. Individual members do **not** move separately in the game world, but they keep full independent access to their own approved assignment and other student features. Shared battles are initiated by the leader and stay strictly turn-based, each student using their own turn. The present isolated game demo uses placeholder companion visuals, not actual online players. See docs/jrpg-online-coop.md for the authoritative server requirements.
+
+## Combat voting demonstration (after leader movement)
+
+The standalone walkable game now illustrates team-majority command selection with six **local fake seats** (P1–P6). One browser visitor supplies all six choices; no claim of real multiplayer. After six selections, the most popular command is executed *once* through the existing fictional S/O/A/P battle engine. The UI reports vote progress without revealing individual choices, displays aggregate counts after resolution, and keeps the leader in control of world movement only. Actual server voting has separate tested pure rules in `backend/src/jrpg-room-rules.mjs`, but the Durable Object/WebSocket transport has not been connected.

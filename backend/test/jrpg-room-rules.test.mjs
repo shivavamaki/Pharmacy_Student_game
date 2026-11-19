@@ -169,3 +169,16 @@ test('Guild Master approach still works with leader-only travel',()=>{
  assert.deepEqual(s.world.position,{x:9,y:8});
  assert.equal(s.world.lastInteraction,'guild-master');
 });
+
+test('malformed case indices and disconnected voters cannot vote',()=>{
+ let s=startEncounter(seatN(2),{actorId:'p1',now:100});
+ s=vote(s,'p1','listen',101);s=vote(s,'p2','listen',102);
+ s=vote(s,'p1','verify',103);s=vote(s,'p2','verify',104);
+ assert.throws(()=>vote(s,'p1','case-choice',105,'1'),/invalid_vote_choice/);
+ assert.throws(()=>vote(s,'p1','case-choice',105,1.3),/invalid_vote_choice/);
+ s=setConnection(s,'p1',false);
+ assert.throws(()=>vote(s,'p1','case-choice',106,1),/voter_disconnected/);
+ s=setConnection(s,'p1',true);
+ s=vote(s,'p1','case-choice',107,1);
+ assert.equal(roomView(s).battle.ballot.votesReceived,1);
+});
