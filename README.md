@@ -6,7 +6,7 @@ This branch is a separate, experimental classic JRPG version of the current Phar
 
 - Authenticated Guild dashboard and new JRPG landing: /
 - Playable standalone fictional learning simulation: /jrpg/
-- **Sprint 1 walkable Guild built with Phaser + TypeScript + Vite**: /jrpg/walk/ (built output required; see docs/jrpg-sprint1.md)
+- **Sprint 1 walkable Guild built with Phaser + TypeScript + Vite**: /jrpg/walk/ (GitHub Actions generates the static preview on this branch; see docs/jrpg-sprint1.md)
 - Existing DOS version frozen on checkpoint/pharmacy-guild-dos-20261119 (commit 30baa211)
 - Design document: docs/jrpg-game-design.md
 

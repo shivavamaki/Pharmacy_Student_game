@@ -9,6 +9,8 @@ permissions:
   contents: read
 jobs:
   build-test:
+    # Auto-generated preview commits should deploy through Cloudflare but not cause CI publish loops.
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, 'build(jrpg): publish walkable preview assets') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -47,3 +49,36 @@ jobs:
           name: jrpg-walk-traces
           path: jrpg-walk/test-results/
           if-no-files-found: ignore
+
+  publish-preview-assets:
+    # Only publishes built static files to the isolated JRPG feature branch.
+    # The existing Cloudflare Pages Git integration then deploys that branch's preview.
+    # Does not modify main, the DOS checkpoint, backend, D1, or Cloudflare settings.
+    needs: build-test
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/feature/pharmacy-guild-jrpg' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/pharmacy-guild-jrpg
+          persist-credentials: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: jrpg-walk-build
+          path: frontend/jrpg/walk/
+      - name: Publish checked build to feature branch only
+        run: |
+          set -euo pipefail
+          test -f frontend/jrpg/walk/index.html
+          test -n "$(find frontend/jrpg/walk/assets -type f -name '*.js' -print -quit)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f frontend/jrpg/walk/index.html frontend/jrpg/walk/assets
+          if git diff --cached --quiet; then
+            echo "Compiled preview already matches this branch."
+          else
+            git commit -m "build(jrpg): publish walkable preview assets"
+            git push origin HEAD:feature/pharmacy-guild-jrpg
+          fi
