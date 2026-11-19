@@ -24,3 +24,9 @@ test('manifest references an existing local icon',()=>{
   assert.equal(m.display,'standalone');assert.equal(m.start_url,'/');
   assert.equal(m.icons[0].src,'/assets/guild-crest.svg');
 });
+test('direct login entry points to existing auth mount',()=>{
+  const html=read('frontend/index.html');
+  assert.match(html,/class="dos-enter" href="#guild-content"/);
+  assert.match(html,/id="guild-content"/);
+  assert.match(read('frontend/dos.css'),/\.dos-enter:focus-visible/);
+});

@@ -3,7 +3,7 @@ on:
   pull_request:
     paths: ['backend/**', 'frontend/**', 'migration/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
   push:
-    branches: [main, migration/cloudflare-foundation, feature/pharmacy-guild-dos]
+    branches: [main, migration/cloudflare-foundation, feature/pharmacy-guild-dos, feature/pharmacy-guild-playable-dos]
     paths: ['backend/**', 'frontend/**', 'migration/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
 permissions:
   contents: read
