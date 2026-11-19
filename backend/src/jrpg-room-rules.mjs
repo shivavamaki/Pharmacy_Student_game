@@ -209,7 +209,9 @@ export function submitVote(state,{actorId,actionId,kind,choiceIndex,ballotId,now
  if(ballotId!==ballot.id)fail('stale_ballot');
  if(now>=ballot.deadlineAt)fail('vote_expired');
  if(!ballot.eligiblePlayerIds.includes(actorId))fail('not_eligible_this_ballot');
+ if(!state.players.some(p=>p.id===actorId&&p.connected))fail('voter_disconnected');
  if(ballot.votes.some(v=>v.actorId===actorId))fail('already_voted');
+ if(kind==='case-choice'&&!Number.isInteger(choiceIndex))fail('invalid_vote_choice');
  const selection=voteKey(kind,choiceIndex);
  if(!voteChoices(state.battle).includes(selection))fail('invalid_vote_choice');
  const next=clone(state);
