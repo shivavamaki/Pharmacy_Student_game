@@ -40,6 +40,8 @@ type TravelPlan={path:Tile[];target:Tile;destination:Tile;interaction:'guild-mas
 export class GuildScene extends Phaser.Scene {
  private pos:Tile={...PLAYER_START};
  private hero!:Phaser.GameObjects.Sprite;
+ private followers:Phaser.GameObjects.Sprite[]=[];
+ private routeHistory:Tile[]=[];
  private direction:Direction='down';
  private walking=false;
  private pendingDestination:Tile|null=null;
@@ -65,6 +67,7 @@ export class GuildScene extends Phaser.Scene {
  constructor(){super({key:'Guild'});}
  create(){
   this.pos={...PLAYER_START};this.pendingDestination=null;this.plan=null;this.path=[];this.walking=false;
+  this.followers=[];this.routeHistory=[{...PLAYER_START}];
   this.game.registry.set('mode','explore');
   this.cameras.main.setBounds(0,0,WORLD_SIZE.width,WORLD_SIZE.height);
   this.cameras.main.setBackgroundColor('#172d3b');
@@ -78,7 +81,17 @@ export class GuildScene extends Phaser.Scene {
   this.add.text(GUILD_MASTER.x*TILE_SIZE+8,GUILD_MASTER.y*TILE_SIZE-12,'✦',{fontSize:'14px',color:'#ffe69b'}).setOrigin(0.5).setDepth(3);
   this.add.image(TRAINING_PORTAL.x*TILE_SIZE+8,TRAINING_PORTAL.y*TILE_SIZE+8,'portal').setDepth(3);
   this.add.text(TRAINING_PORTAL.x*TILE_SIZE+8,TRAINING_PORTAL.y*TILE_SIZE-10,'⚔',{fontSize:'12px',color:'#ffedb0'}).setOrigin(0.5).setDepth(3);
+  // Formation preview: one leader and five NPC stand-ins. NOT six connected users.
+  // In online mode the Durable Object will publish one authoritative party path.
+  const followerColors=[0x99cbff,0xf5b5ab,0xc6a9fa,0xa7e4a0,0xf7df8e];
+  this.followers=followerColors.map((tint,i)=>
+    this.add.sprite(this.pos.x*TILE_SIZE+8+(i%3-1)*2,
+      this.pos.y*TILE_SIZE+8+Math.floor(i/3)*2,'hero-down-0')
+      .setTint(tint).setAlpha(0.86).setDepth(3+i*0.02));
   this.hero=this.add.sprite(this.pos.x*TILE_SIZE+8,this.pos.y*TILE_SIZE+8,'hero-down-0').setDepth(4);
+  this.add.text(8,8,'PARTY LEADER • 5 DEMO FOLLOWERS',{
+    fontFamily:'monospace',fontSize:'9px',color:'#fff0b1',backgroundColor:'#172e42'
+  }).setScrollFactor(0).setDepth(7);
   this.cameras.main.startFollow(this.hero,false,0.18,0.18);
   this.cameras.main.setRoundPixels(true);
 
@@ -94,7 +107,7 @@ export class GuildScene extends Phaser.Scene {
   });
   this.announce();
   const won=!!this.game.registry.get('trainingWon');
-  this.game.events.emit('guild:status',won?'Training simulation complete · no official XP/Gold awarded':'Tap a destination on the map, or select the Guild Master ✦');
+  this.game.events.emit('guild:status',won?'Training simulation complete · no official XP/Gold awarded':'Demo leader controls the whole party — tap a map destination ✦');
  }
  private announce(){this.game.events.emit('guild:position',this.pos.x,this.pos.y);}
  private drawTravelPlan(plan:TravelPlan){
@@ -140,6 +153,16 @@ export class GuildScene extends Phaser.Scene {
   this.tweens.add({targets:this.hero,x:next.x*TILE_SIZE+8,y:next.y*TILE_SIZE+8,
    duration:140,ease:'Linear',onComplete:()=>{
     this.pos=next;this.walking=false;
+    this.routeHistory.push({...next});
+    const history=this.routeHistory;
+    this.followers.forEach((follower,i)=>{
+      // Each stand-in trails on a previously traversed walkable tile (not through walls).
+      const followTile=history[Math.max(0,history.length-2-i)];
+      this.tweens.add({targets:follower,
+        x:followTile.x*TILE_SIZE+8,y:followTile.y*TILE_SIZE+8,
+        duration:125,ease:'Linear'});
+      follower.setTexture('hero-'+this.direction+'-0');
+    });
     this.hero.stop();this.hero.setTexture('hero-'+this.direction+'-0');
     this.announce();
     if(this.pendingDestination){
