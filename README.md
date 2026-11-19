@@ -1,22 +1,24 @@
-# Pharmacy Guild — DOS Edition
+# Pharmacy Guild — Chronicles of the Four Seals (JRPG Edition)
 
-A mobile-friendly DOS-inspired web game built on the existing Cloudflare application.
+This branch is a separate, experimental classic JRPG version of the current Pharmacy Guild, not a replacement for the deployed app.
+
+## Entrypoints
+
+- Authenticated Guild dashboard and new JRPG landing: /
+- Playable standalone fictional learning simulation: /jrpg/
+- Existing DOS version frozen on checkpoint/pharmacy-guild-dos-20261119 (commit 30baa211)
+- Design document: docs/jrpg-game-design.md
 
 ## Architecture
-- Frontend: static ES modules, local pixel artwork, and DOS interface CSS in frontend/.
-- Authentication: existing Firebase Google sign-in and role checks.
-- Backend: Cloudflare Workers + D1; existing characters, parties, quests, progress and GM/admin controls stay intact.
-- PWA: manifest supports standalone presentation when the browser permits it. Offline gameplay is NOT enabled.
-- Old Google Apps Script runtime/source files have been removed from this branch only. They remain in Git history and on main.
 
-## Test
-Use Node.js 24+:
+Firebase Google Auth, Cloudflare Workers, D1, existing parties/quests/GM approval and character records are preserved for the main dashboard. The new /jrpg/ path currently runs isolated, session-only fiction with no authentication, API writes, real XP, Gold, grades or claims of official quest completion. It uses the original campaign pixel artwork and a simple browser-based turn system. Phaser and a complete interactive world are planned, not installed.
 
-    npm ci
-    npm test
+## Validation
 
-## Preview deployment
-Deploy this branch to a separate Cloudflare Pages preview, serving frontend/ as site root with no build command. Before login can work on the preview hostname, add that hostname to Firebase authorized domains and configure the dev Worker ALLOWED_ORIGIN accordingly. API_ORIGIN currently points to the development Worker; no production traffic is changed by this commit.
+Node.js 24+ required. Run npm ci and npm test. Deploy the branch to a separate Cloudflare Pages preview with frontend/ as static output root, then validate the Google login domain and CORS before allowing real sign-in. No production D1 migrations are part of this branch.
 
-## Scope and limits
-This is a browser game with DOS-inspired UI, not a DOS emulator. Phaser is not yet installed. Do not migrate real users, reset passwords, change production D1 or merge the old Apps Script PR as part of this theme update. Historical migration instructions remain in MIGRATION.md; current DOS guidance is in docs/dos-edition.md.
+**Important:** The story demo allows chapter progression for testing. Real curriculum stages and GM authorizations remain server-controlled; the current worker still fixes OPD before IPD rather than using individual team rotation schedules.
+
+## Next steps
+
+See docs/jrpg-game-design.md for teaching objectives, acts, class mapping, encounter mechanics, safety criteria and rollout phases.

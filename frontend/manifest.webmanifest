@@ -1,13 +1,13 @@
 {
   "id": "/",
-  "name": "Pharmacy Guild DOS Edition",
-  "short_name": "Guild DOS",
+  "name": "Pharmacy Guild JRPG Edition",
+  "short_name": "Guild JRPG",
   "description": "Retro pharmacy learning adventure",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#06100c",
-  "theme_color": "#06100c",
+  "background_color": "#11182f",
+  "theme_color": "#11182f",
   "icons": [
     {
       "src": "/assets/guild-crest.svg",
