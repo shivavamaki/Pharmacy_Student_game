@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Adventure Recape</title>
   <style>
     :root{
@@ -192,6 +192,16 @@
     .auth-error{min-height:24px;color:#a10028;font-weight:900;margin-top:10px}
     .user-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:3px solid var(--line);color:var(--ink);font-weight:900}
     .hidden{display:none!important}
+    /* Accessible mobile sizing and optional DOS-inspired palette */
+    button,input,textarea,select{min-height:44px;max-width:100%}
+    :focus-visible{outline:3px solid #ffd45e;outline-offset:2px}
+    body.dos-theme{--bg:#07110f;--panel:#10241d;--panel2:#163327;--ink:#b2f6c0;--muted:#98c9ac;--blue:#76c9ad;--mint:#8af1a4;--pink:#b5caa8;--yellow:#e4d68a;--purple:#468568;--danger:#e99783;--line:#458e69;--shadow:#000;background:#07110f;color:#b2f6c0;font-family:Consolas,"Courier New",monospace}
+    .dos-theme .profile-box,.dos-theme .map-node,.dos-theme .score-tile,.dos-theme .user-chip{background:#10241d;color:#b2f6c0}
+    .dos-theme input,.dos-theme textarea,.dos-theme select{background:#07110f;color:#b2f6c0}
+    .dos-theme .hero p,.dos-theme .subtitle{color:#a3cdb0}
+    @media(max-width:580px){.app{width:100%}.main{min-height:0;padding:12px}.sidebar{padding:10px}.hero h2{font-size:29px}.hero{min-height:0}.pixel-scene{height:245px}.top-actions button{flex:1 1 130px}.credits-viewport{height:330px}.credits-roll{font-size:15px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
 
 
     .ending-shell{background:#101426;color:#fff7d6;border:4px solid var(--line);padding:18px;box-shadow:8px 8px 0 #000;overflow:hidden}
@@ -240,7 +250,7 @@
       </div>
       <button id="loginButton" class="green" onclick="login()">Start Recape</button>
       <div id="authError" class="auth-error"></div>
-      <p style="font-size:12px">Default password is the same as your username. เว้นวรรคให้ตรงกับชื่อในรายชื่อ</p>
+      <p style="font-size:12px">Use your current Guild password. Change any previously shared or temporary password.</p>
     </div>
   </div>
 
@@ -255,6 +265,7 @@
       </div>
       <div class="top-actions">
         <button class="secondary" onclick="window.location.href='<?!= webAppUrl ?>'">← Back to Pharmacy Guild</button>
+        <button class="secondary" id="themeButton" onclick="toggleDosTheme()" aria-pressed="false">DOS MODE: OFF</button>
         <span class="user-chip" id="loggedUserChip">Not logged in</span>
         <button class="danger" onclick="logout()">Logout</button>
         <button class="green hidden" id="analyticsButton" onclick="openAnalytics()">📊 Analytics</button>
@@ -420,9 +431,16 @@
       results:{questScore:0,rank:"",endingTitle:"",endingText:""}
     };
 
+    function toggleDosTheme(){
+      const active=document.body.classList.toggle('dos-theme');
+      localStorage.setItem('guildTheme',active?'dos':'classic');
+      const btn=document.getElementById('themeButton');
+      if(btn){btn.textContent='DOS MODE: '+(active?'ON':'OFF');btn.setAttribute('aria-pressed',String(active));}
+    }
     function load(){
+      if(localStorage.getItem('guildTheme')==='dos')toggleDosTheme();
       bindLoginEnter();
-      const savedSession = localStorage.getItem(SESSION_KEY);
+      const savedSession = sessionStorage.getItem(SESSION_KEY);
       if (!savedSession || !(window.google && google.script && google.script.run)) {
         showLogin();
         return;
@@ -430,7 +448,7 @@
       google.script.run
         .withSuccessHandler(result => {
           if (result && result.ok) enterGame(savedSession, result.user);
-          else { localStorage.removeItem(SESSION_KEY); showLogin(result && result.message); }
+          else { sessionStorage.removeItem(SESSION_KEY); showLogin(result && result.message); }
         })
         .withFailureHandler(() => { localStorage.removeItem(SESSION_KEY); showLogin('Unable to validate session.'); })
         .validateSession(savedSession);
@@ -460,7 +478,7 @@
         .withSuccessHandler(result => {
           btn.disabled=false; btn.textContent='Start Recape';
           if(!result || !result.ok){ document.getElementById('authError').textContent=(result&&result.message)||'Login failed'; return; }
-          localStorage.setItem(SESSION_KEY,result.token);
+          sessionStorage.setItem(SESSION_KEY,result.token);
           enterGame(result.token,result.user);
         })
         .withFailureHandler(error => {
