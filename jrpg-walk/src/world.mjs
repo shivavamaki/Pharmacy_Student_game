@@ -37,3 +37,47 @@ export function isReachable(from,to){
  }
  return false;
 }
+
+// Destination selection is independent of input device (mouse/touch/accessible location button).
+// No teleporting through walls, roof tiles, water, NPCs or the training portal.
+const CARDINAL_DIRECTIONS=[[0,-1],[-1,0],[1,0],[0,1]];
+const tileKey=({x,y})=>x+','+y;
+const sameTile=(a,b)=>a.x===b.x&&a.y===b.y;
+export function shortestPath(from,to){
+ if(!from||!to||!canEnter(from.x,from.y)||!canEnter(to.x,to.y))return null;
+ if(sameTile(from,to))return [];
+ const queue=[{x:from.x,y:from.y}],parent=new Map([[tileKey(from),null]]);
+ for(let i=0;i<queue.length;i++){
+  const current=queue[i];
+  for(const [dx,dy] of CARDINAL_DIRECTIONS){
+   const next={x:current.x+dx,y:current.y+dy},key=tileKey(next);
+   if(parent.has(key)||!canEnter(next.x,next.y))continue;
+   parent.set(key,current);
+   if(sameTile(next,to)){
+    const path=[next];
+    let cursor=current;
+    while(!sameTile(cursor,from)){path.push(cursor);cursor=parent.get(tileKey(cursor));}
+    return path.reverse();
+   }
+   queue.push(next);
+  }
+ }
+ return null;
+}
+export function routeToDestination(from,selected){
+ if(!selected||!Number.isInteger(selected.x)||!Number.isInteger(selected.y))return null;
+ const interaction=sameTile(selected,GUILD_MASTER)?'guild-master':
+   sameTile(selected,TRAINING_PORTAL)?'training-portal':null;
+ const candidateTiles=interaction
+  ?CARDINAL_DIRECTIONS.map(([dx,dy])=>({x:selected.x+dx,y:selected.y+dy}))
+    .filter(tile=>canEnter(tile.x,tile.y))
+  :[selected];
+ let best=null;
+ for(const destination of candidateTiles){
+  const path=shortestPath(from,destination);
+  if(path!==null&&(!best||path.length<best.path.length)){
+   best={path,target:{x:selected.x,y:selected.y},destination,interaction};
+  }
+ }
+ return best;
+}
