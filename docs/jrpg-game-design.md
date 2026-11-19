@@ -4,7 +4,7 @@
 
 ## Multiplayer requirement (updated 2026-11-19)
 
-The completed JRPG must provide **live synchronous online cooperative play for 1–6 real players per room**. Students each control their own character, with strictly turn-based battles and server-owned turn order, answers, timers, room capacity and outcome. Current Phaser walkable demo remains solo; online room transport is not implemented yet. See [jrpg-online-coop.md](jrpg-online-coop.md).
+The completed JRPG must provide **live synchronous online cooperative play for 1–6 real players per room**, with an instructor-approved **Party Leader**. Only the leader selects map destinations and moves the entire team together. The leader initiates shared story encounters and combat, while **each member still plays their own battle turn**. Students independently submit assignments and evidence. Battles remain strictly turn-based, with server-owned turn order, answers, timers, room capacity and outcome. Current Phaser walkable demo remains solo; online room transport is not implemented yet. See [jrpg-online-coop.md](jrpg-online-coop.md).
 
 ## Vision and audience
 
