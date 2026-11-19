@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Pharmacy Guild DOS Edition",
+  "short_name": "Guild DOS",
+  "description": "Retro pharmacy learning adventure",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#06100c",
+  "theme_color": "#06100c",
+  "icons": [
+    {
+      "src": "/assets/guild-crest.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
