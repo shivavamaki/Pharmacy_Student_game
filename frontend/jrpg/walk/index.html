@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="th">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#10182d"><meta name="description" content="Pharmacy Guild walkable Guild Hall JRPG training prototype">
+<title>Pharmacy Guild · Walkable Guild</title>  <script type="module" crossorigin src="/jrpg/walk/assets/index-B_I76N-p.js"></script>
+  <link rel="stylesheet" crossorigin href="/jrpg/walk/assets/index-Cy6HrgYZ.css">
+</head>
+<body>
+<a class="skip-link" href="#guild-main">ข้ามไปยังเกม</a>
+<header class="header"><a href="/jrpg/" class="back">← JRPG Chapters</a><strong>PHARMACY GUILD <span>· THE FOUR SEALS</span></strong><span class="alpha">SPRINT 1 · FICTIONAL DEMO</span></header>
+<main id="guild-main" class="page">
+<div class="intro"><p class="kicker">THE GUILD OF AROGEA</p><h1>ลานกิลด์แห่งรุ่งอรุณ</h1><p>เดินสำรวจ พูดคุยกับ Guild Master แล้วทดสอบการต่อสู้กับหมอกแห่งความสับสน</p><p class="safety">เฉพาะเกมฝึกจำลอง · ไม่มีการเข้าสู่ระบบ / ส่งข้อมูล / บันทึกคะแนน · XP และการอนุมัติภารกิจจริงต้องผ่าน GM</p></div>
+<section class="layout"><div class="game-panel">
+<div class="hud"><span id="status">กำลังโหลด Guild...</span><span id="coords" aria-live="off"></span></div>
+<div id="game" class="canvas-shell" role="application" aria-label="JRPG Guild town, use arrow keys or touch controls"></div>
+<div class="controls" aria-label="ปุ่มควบคุมบนมือถือ">
+ <div class="dpad"><button id="move-up" class="up" type="button" aria-label="Move up">▲</button><button id="move-left" class="left" type="button" aria-label="Move left">◀</button><button id="move-down" class="down" type="button" aria-label="Move down">▼</button><button id="move-right" class="right" type="button" aria-label="Move right">▶</button></div>
+ <button id="interact" class="interact" type="button">✦ พูดคุย / สำรวจ</button>
+</div>
+<p class="tips">Desktop: WASD / ↑↓←→ เดิน, E / Enter / Space พูดคุย · Mobile: ปุ่มทิศทางและปุ่มสำรวจ</p>
+</div><aside class="sidebar">
+<h2>QUEST JOURNAL</h2><p>Training Ground · main-week-01</p><div class="quest-card"><span>01</span><div><strong>พบกับ Guild Master</strong><p>ยืนใกล้ตัวละครที่มีเครื่องหมาย ✦ แล้วกดสำรวจ</p></div></div><div class="quest-card"><span>02</span><div><strong>Four Seals Battle</strong><p>ใช้ S/O/A/P และตอบปริศนาสถานการณ์จำลอง</p></div></div><p id="journal" role="status">ยังไม่ได้เริ่มภารกิจฝึกจำลอง</p><a href="/#guild-content">เข้าสู่ระบบ Pharmacy Guild จริง</a>
+</aside></section>
+</main>
+<section id="dialogue" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="dialogue-title"><div class="window"><div class="window-head">✦ THE GUILD MASTER</div><h2 id="dialogue-title">บทสนทนา</h2><p id="dialogue-text"></p><div class="window-actions"><button type="button" id="dialogue-battle">▶ ฝึกต่อสู้กับหมอก</button><button type="button" id="dialogue-close">กลับไปเดินสำรวจ</button></div></div></section>
+<section id="battle-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="battle-title"><div class="window battle-window"><div class="window-head">⚔ TRAINING SIMULATION</div><h2 id="battle-title">Whispering Doubt</h2><div id="battle-stats" class="stats"></div><div id="battle-seals" class="seals"></div><div id="battle-case" class="question"></div><div id="battle-actions" class="battle-actions"></div><ol id="battle-log" aria-live="polite"></ol><button id="battle-return" hidden type="button">↵ กลับไปที่กิลด์</button></div></section>
+</body></html>
