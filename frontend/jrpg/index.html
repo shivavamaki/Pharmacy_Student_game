@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#121c3a">
+<title>Pharmacy Guild — JRPG Chronicles</title>
+<meta name="description" content="Original JRPG-style Pharmacy Guild story and turn-based training prototype">
+<link rel="icon" href="/assets/guild-crest.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/jrpg/play.css">
+</head>
+<body>
+<a class="skip" href="#play">ข้ามไปยังเกม</a>
+<header><a class="brand" href="/"><img src="/assets/guild-crest.svg" width="44" height="50" alt=""><span>PHARMACY GUILD<small>CHRONICLES OF THE FOUR SEALS</small></span></a><span class="label">JRPG · PROTOTYPE v0.1</span></header>
+<main id="play">
+<section class="hero"><p class="kicker">AN ORIGINAL PIXEL FANTASY ADVENTURE</p><h1>ตำนานแห่ง <em>ผนึกทั้งสี่</em></h1><p>ออกเดินทางกับกิลด์เภสัชกร ฝ่าหมอกแห่งข้อมูลที่สับสน ผ่านการรับฟัง ตรวจสอบ วิเคราะห์ และวางแผน</p><p class="notice">โหมดตัวอย่าง · ข้อมูลสมมติ · ไม่ใช้ Login, D1 หรือรางวัลจริง · รีโหลดเพื่อเริ่มใหม่</p></section>
+<div class="columns">
+<aside class="box"><h2 class="bar">WORLD MAP <span>✦</span></h2><div class="job"><label for="job">อาชีพตัวละคร</label><select id="job"></select><small>เปลี่ยนสีสันเรื่องราวเท่านั้น ไม่ส่งผลต่อเกณฑ์ประเมิน</small></div><nav id="chapters" aria-label="เลือกบท"></nav><p class="aside-note">ด่านที่ปลดล็อกในตัวอย่างไม่ใช่การผ่าน GM Review<br><a href="/#guild-content">เข้าสู่ระบบ Guild จริง</a></p></aside>
+<article class="box">
+<div class="bar"><span id="chapter-index">CHAPTER 01</span><span id="week">WEEK 1</span></div>
+<div class="scene"><img id="scene-art" src="/assets/campaign/training-ground.webp" alt="" width="192" height="192"><span id="scene-label"></span></div>
+<div class="dialogue"><div class="portrait" aria-hidden="true">GM</div><div><small id="speaker">THE GUILD MASTER</small><h2 id="chapter-name"></h2><p id="story"></p><div class="curriculum" id="curriculum"></div></div></div>
+<section class="encounter" aria-labelledby="encounter-title"><div class="bar"><h3 id="encounter-title">TURN-BASED ENCOUNTER</h3><span id="phase">READY</span></div><div id="battle"></div></section>
+<section id="case" class="case" aria-live="polite"></section>
+<section class="log"><h3>BATTLE LOG <span aria-hidden="true">▮</span></h3><ol id="log" aria-live="polite"></ol></section>
+<div class="hint">Keyboard 1–7: เลือกคำสั่ง · Mobile: แตะปุ่ม · ไม่มีการบันทึกคะแนนจริง</div>
+</article>
+</div>
+</main>
+<script type="module" src="/jrpg/play.mjs"></script>
+</body></html>
