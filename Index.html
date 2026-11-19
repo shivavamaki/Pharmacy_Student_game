@@ -2,7 +2,8 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c1311">
 <title>The Pharmacy Guild — Connected MVP</title>
 <style>
 :root{--bg:#171424;--panel:#f5dfaa;--ink:#2a2136;--line:#4d365c;--gold:#ffd66b;--mint:#83f0be;--blue:#7fd8ff;--purple:#a98cff;--red:#ff717f;--orange:#ffb85c;--shadow:#0a0812}
@@ -17,25 +18,33 @@ label{display:block;font-weight:bold;font-size:13px;margin:8px 0 4px}input,texta
 .item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:white;border:3px solid var(--line);padding:9px}.empty{text-align:center;padding:24px;color:#6b6078}
 .toast{position:fixed;right:18px;bottom:18px;background:#fff4cf;color:var(--ink);border:4px solid var(--line);padding:12px;box-shadow:5px 5px #000;display:none;z-index:20;font-weight:bold}
 .login{max-width:760px;margin:60px auto}.hidden{display:none!important}
-@media(max-width:850px){.layout{grid-template-columns:1fr}.g2,.g3{grid-template-columns:1fr}}
+body.dos-theme{--bg:#07110f;--panel:#10241d;--ink:#a6f3b6;--line:#3a8468;--gold:#e0d88d;--mint:#7ef0a0;--blue:#7acbbd;--purple:#659b85;--red:#ef8c87;--shadow:#000;background:#07110f;color:#a6f3b6;font-family:Consolas,"Courier New",monospace}
+.dos-theme .sidebar{background:#0d1d18}.dos-theme .profile,.dos-theme .panel,.dos-theme .card,.dos-theme .quest,.dos-theme .item{background:#10241d;color:#a6f3b6}.dos-theme .muted,.dos-theme .empty{color:#93b9a1}.dos-theme input,.dos-theme textarea,.dos-theme select{background:#07110f;color:#b3ffd0}.dos-theme .secondary{background:#1b3a2d;color:#c4ffd0}.dos-theme .status{background:#193e2d;color:#d8ffdc}.dos-theme .logo{background:#10241d;color:#9bffbe;border-color:#438967}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #ffcf67;outline-offset:2px}
+.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.top-actions button{font-size:13px}
+.password-help{padding:10px;border:2px solid var(--line);margin-top:12px}
+@media(max-width:850px){.app{padding:10px}.layout{grid-template-columns:1fr}.g2,.g3{grid-template-columns:1fr}.login{margin:14px auto}header{align-items:flex-start;flex-direction:column}.top-actions{width:100%}.sidebar{position:static}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.nav button{text-align:center;min-height:44px}main{min-width:0}.panel{padding:12px}.quest,.card{overflow-wrap:anywhere}input,textarea,select{font-size:16px}}
+@media(max-width:390px){.nav{grid-template-columns:1fr}.brand h1{font-size:19px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-  <div class="brand"><div class="logo">✚</div><div><h1>THE PHARMACY GUILD</h1><div>STEP 13 • Adventure Recape merged</div></div></div>
-  <div id="connectionStatus" class="status">Not signed in</div>
+  <div class="brand"><div class="logo">✚</div><div><h1>THE PHARMACY GUILD</h1><div>RETRO WEB RPG • DOS EDITION</div></div></div>
+  <div class="top-actions"><button type="button" class="secondary" id="themeBtn" onclick="toggleTheme()" aria-pressed="false">DOS MODE: OFF</button><div id="connectionStatus" class="status">Not signed in</div></div>
 </header>
 
 <section id="loginView" class="panel pixel login">
   <h2>Guild Login</h2>
   <p class="muted">บัญชีนี้ตรวจสอบจากชีต Users จริง</p>
   <div class="grid g2">
-    <div><label>Username</label><input id="loginUser" value="test"></div>
-    <div><label>Password</label><input id="loginPass" type="password" value="test"></div>
+    <div><label for="loginUser">Username</label><input id="loginUser" autocomplete="username"></div>
+    <div><label for="loginPass">Password</label><input id="loginPass" type="password" autocomplete="current-password"></div>
   </div>
   <button id="loginBtn" class="primary" style="width:100%;margin-top:12px" onclick="doLogin()">Enter the Guild</button>
-  <button class="gold" style="width:100%;margin-top:8px" onclick="initializeDB()">Initialize Demo Database</button>
+  <p class="muted">Use your existing guild account. Demo credentials are disabled.</p>
   <div id="localWarning" class="card" style="margin-top:12px">
     เปิดไฟล์นี้ผ่าน Apps Script Web App เพื่อใช้งาน backend จริง
   </div>
@@ -50,7 +59,8 @@ label{display:block;font-weight:bold;font-size:13px;margin:8px 0 4px}input,texta
       <div>XP: <b id="xpText">0</b> • Level: <b id="levelText">1</b></div>
     </div>
     <div id="nav" class="nav"></div>
-    <button class="danger" style="width:100%;margin-top:12px" onclick="doLogout()">Logout</button>
+    <button class="secondary" style="width:100%;margin-top:12px" onclick="openPasswordDialog()">Change Password</button>
+    <button class="danger" style="width:100%;margin-top:8px" onclick="doLogout()">Logout</button>
   </aside>
 
   <main>
@@ -62,7 +72,14 @@ label{display:block;font-weight:bold;font-size:13px;margin:8px 0 4px}input,texta
   </main>
 </div>
 </div>
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<dialog id="passwordDialog" class="panel pixel" aria-labelledby="passwordHeading" style="max-width:min(440px,94vw);width:100%;background:var(--panel);color:var(--ink)">
+  <h2 id="passwordHeading">Change Password</h2>
+  <p>For your security, use a unique password with at least 10 characters.</p>
+  <label for="oldPassword">Current password</label><input type="password" id="oldPassword" autocomplete="current-password">
+  <label for="newPassword">New password</label><input type="password" id="newPassword" autocomplete="new-password" minlength="10">
+  <div class="top-actions" style="margin-top:14px"><button class="primary" onclick="submitPasswordChange()">Save and Sign Out</button><button class="secondary" onclick="closePasswordDialog()">Cancel</button></div>
+</dialog>
 
 <script>
 const APP={token:'',user:null,party:null,assignments:[],quests:[],evidence:[],daily:[]};
@@ -79,7 +96,24 @@ function api(name,args=[],ok=()=>{},fail=showError){
   let runner=google.script.run.withSuccessHandler(ok).withFailureHandler(fail);
   runner[name](...args);
 }
-function initializeDB(){api('setupDatabase',[],r=>showToast(r.message||'Database ready'))}
+function toggleTheme(){
+  const active=document.body.classList.toggle('dos-theme');
+  localStorage.setItem('guildTheme',active?'dos':'classic');
+  const b=q('themeBtn');b.textContent='DOS MODE: '+(active?'ON':'OFF');b.setAttribute('aria-pressed',String(active));
+}
+function openPasswordDialog(){
+  const d=q('passwordDialog');
+  if(typeof d.showModal==='function')d.showModal();else d.setAttribute('open','');
+}
+function closePasswordDialog(){const d=q('passwordDialog');if(typeof d.close==='function')d.close();else d.removeAttribute('open')}
+function submitPasswordChange(){
+  const oldPass=val('oldPassword'),newPass=val('newPassword');
+  if(newPass.length<10){showToast('New password must be at least 10 characters');return}
+  api('changePassword',[APP.token,oldPass,newPass],()=>{
+    sessionStorage.removeItem('guildToken');APP.token='';
+    showToast('Password updated. Sign in again.');location.reload();
+  });
+}
 function doLogin(){
   setBusy('loginBtn',true,'Signing in...');
   api('login',[val('loginUser'),val('loginPass')],res=>{
@@ -106,6 +140,7 @@ function showApp(){
   q('loginView').classList.add('hidden');q('appView').classList.remove('hidden');
   q('connectionStatus').textContent='Connected as '+APP.user.DisplayName;
   setBusy('loginBtn',false,'Enter the Guild');
+  if(APP.user.MustChangePassword){showToast('Please change your temporary password');openPasswordDialog()}
 }
 function doLogout(){
   if(APP.token)api('logout',[APP.token],()=>{});
@@ -222,6 +257,8 @@ function fmt(v){if(!v)return '-';try{return new Date(v).toLocaleString('th-TH')}
 function showError(e){showToast(e&&e.message?e.message:String(e))}
 function showToast(m){const t=q('toast');t.textContent=m;t.style.display='block';clearTimeout(window.tt);window.tt=setTimeout(()=>t.style.display='none',2200)}
 (function init(){
+  if(localStorage.getItem('guildTheme')==='dos')toggleTheme();
+  q('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
   if(hasBackend())q('localWarning').classList.add('hidden');
   const token=sessionStorage.getItem('guildToken');
   if(token){APP.token=token;api('getCurrentUser',[token],u=>{APP.user=u;loadBootstrap()},()=>sessionStorage.removeItem('guildToken'))}
