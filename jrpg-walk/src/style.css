@@ -35,3 +35,14 @@ a{color:#abedc6}a:hover{color:#ffe4a3}
 .combat-party .combat-leader{background:#756340;border-color:#ecce88;color:#fff2cd;font-weight:900}
 .combat-note{font-size:11px!important;color:#c4dbe0;line-height:1.6!important}
 @media(max-width:480px){.combat-party{grid-template-columns:repeat(2,minmax(0,1fr))}.personal-tasks{font-size:10px}.team-banner{font-size:10px}}
+
+/* Single-browser preview for collective voting (NOT a live network room). */
+.voting-panel{background:#193b42;border:2px solid #78ba9d;padding:12px;margin:12px 0}
+.voting-panel>strong{font:800 12px/1.6 ui-monospace,monospace;color:#ffdfa3}
+.vote-seats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+.vote-seat{background:#203a53;border:2px solid #5e8490;padding:7px 4px;font:700 12px ui-monospace,monospace;text-align:center;color:#d4e4e7}
+.vote-seat.voted{background:#1d5741;border-color:#9ce2b0;color:#e5ffe5}
+.vote-seat.voting{border-color:#ffe1a0;background:#6b532d;color:#fff7da}
+.vote-help{font-size:11px!important;line-height:1.6!important;color:#d4ecde}
+.vote-result{font-size:12px!important;color:#fee19a;font-family:ui-monospace,monospace;line-height:1.7}
+@media(max-width:430px){.vote-seats{grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -7,7 +7,7 @@
 <a class="skip-link" href="#guild-main">ข้ามไปยังเกม</a>
 <header class="header"><a href="/jrpg/" class="back">← JRPG Chapters</a><strong>PHARMACY GUILD <span>· THE FOUR SEALS</span></strong><a class="personal-tasks" href="/#guild-content" target="_blank" rel="noopener noreferrer">My assignments ↗</a><span class="alpha">TEAM FORMATION DEMO</span></header>
 <main id="guild-main" class="page">
-<div class="intro"><p class="kicker">THE GUILD OF AROGEA</p><h1>ลานกิลด์แห่งรุ่งอรุณ</h1><p>หัวหน้าปาร์ตี้เลือกจุดหมายบนแผนที่ ทุกคนเดินไปด้วยกัน และเริ่มการต่อสู้แบบ Turn-based เป็นทีม</p><p class="safety">เดโมแสดงหัวหน้าปาร์ตี้กับผู้ติดตามสมมติอีก 5 ตัว ไม่ใช่ผู้เล่นออนไลน์จริง · สมาชิกทุกคนยังทำงานส่วนตัว เช่น ส่ง Assignment ได้ใน Guild Portal · ไม่มีการส่งคะแนนหรือ XP จริง</p></div>
+<div class="intro"><p class="kicker">THE GUILD OF AROGEA</p><h1>ลานกิลด์แห่งรุ่งอรุณ</h1><p>หัวหน้าปาร์ตี้ควบคุมการเดินทาง สมาชิกทั้ง 6 คนร่วมโหวตเลือกคำสั่งต่อสู้ในแต่ละรอบ จากนั้นใช้คำสั่งที่ได้คะแนนโหวตสูงสุด</p><p class="safety">เดโมแสดงหัวหน้าปาร์ตี้กับผู้ติดตามสมมติอีก 5 ตัว ไม่ใช่ผู้เล่นออนไลน์จริง · สมาชิกทุกคนยังทำงานส่วนตัว เช่น ส่ง Assignment ได้ใน Guild Portal · ไม่มีการส่งคะแนนหรือ XP จริง</p></div>
 <section class="layout"><div class="game-panel">
 <div class="hud"><span id="status">กำลังโหลด Guild...</span><span id="coords" aria-live="off"></span></div>
 <div class="team-banner" role="note"><strong>👑 PARTY LEADER (DEMO)</strong>
@@ -32,7 +32,13 @@
 <section id="battle-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="battle-title"><div class="window battle-window"><div class="window-head">⚔ TRAINING SIMULATION</div><h2 id="battle-title">Whispering Doubt</h2><div class="combat-party" aria-label="Prototype shared party battle representation">
  <span class="combat-leader">👑 P1 Leader</span>
  <span>P2 · Demo</span><span>P3 · Demo</span><span>P4 · Demo</span><span>P5 · Demo</span><span>P6 · Demo</span>
-</div><p class="combat-note">Six-slot battle preview only. Actual players will take their own turns; the leader initiates the encounter.</p>
+</div><p class="combat-note">LOCAL VOTING SIMULATOR: You operate all six pretend seats in this one browser. This is NOT live multiplayer. In the online game each student will vote from their own device; the Party Leader alone controls map movement.</p>
+<div class="voting-panel" aria-label="Team vote">
+ <strong id="battle-vote-progress" role="status" aria-live="polite">Waiting for vote</strong>
+ <div id="battle-vote-seats" class="vote-seats"></div>
+ <p id="battle-vote-result" class="vote-result" role="status" aria-live="polite"></p>
+ <p class="vote-help">Choose an action for the highlighted demo seat; the next seat takes over automatically. When 6 votes are cast, the most-selected action is applied to the whole team. Ties go to the leader’s vote if tied, otherwise Guard.</p>
+</div>
 <div id="battle-stats" class="stats"></div><div id="battle-seals" class="seals"></div><div id="battle-case" class="question"></div><div id="battle-actions" class="battle-actions"></div><ol id="battle-log" aria-live="polite"></ol><button id="battle-return" hidden type="button">↵ กลับไปที่กิลด์</button></div></section>
 <script type="module" src="/src/main.ts"></script>
 </body></html>
