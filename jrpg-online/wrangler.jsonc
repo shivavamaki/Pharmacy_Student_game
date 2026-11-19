@@ -1,0 +1,34 @@
+{
+  "name": "pharmacy-guild-jrpg-rooms-dev",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-20",
+  "workers_dev": true,
+  "vars": {
+    "APP_ENV": "development",
+    "FIREBASE_PROJECT_ID": "pharmacy-student-game",
+    "ALLOWED_ORIGIN": "https://feature-pharmacy-guild-jrpg.pharmacy-guild-web-dev.pages.dev"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "JRPG_ROOMS",
+        "class_name": "JrpgRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "JrpgRoom"
+      ]
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pharmacy-guild-dev",
+      "database_id": "708095f3-f6b2-4931-9205-cd0422ba0932"
+    }
+  ]
+}

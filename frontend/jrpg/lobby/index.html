@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111a32">
+<meta name="description" content="Pharmacy Guild JRPG multiplayer lobby for six-person teams">
+<title>Pharmacy Guild · Online Party Lobby</title>
+<link rel="icon" type="image/svg+xml" href="/assets/guild-crest.svg">
+<link rel="stylesheet" href="/jrpg/lobby/lobby.css">
+</head>
+<body>
+<a class="skip" href="#lobby-main">ข้ามไปที่ปาร์ตี้</a>
+<header class="topbar"><a href="/jrpg/" class="brand"><img src="/assets/guild-crest.svg" width="38" height="45" alt=""> PHARMACY GUILD <small>ONLINE PARTY LOBBY</small></a>
+<a href="/#guild-content">My assignments ↗</a></header>
+<main id="lobby-main">
+ <section class="intro">
+  <p class="eyebrow">CHRONICLES OF THE FOUR SEALS · CO-OP MODE</p>
+  <h1>Party Lobby <span>1–6 Players</span></h1>
+  <p>หัวหน้าปาร์ตี้พาทีมเดินทาง สมาชิกแต่ละคนโหวตคำสั่งต่อสู้บนมือถือของตนเอง โดยระบบจะเลือกคำสั่งที่มีคะแนนโหวตมากที่สุด</p>
+  <p id="service-warning" class="warning" role="status">โหมดออนไลน์ยังไม่เปิดใช้งาน ต้องเชื่อมต่อ Multiplayer Worker แยกต่างหากก่อนใช้งานจริง</p>
+ </section>
+ <div class="layout">
+  <section class="panel" aria-labelledby="account-heading">
+   <h2 id="account-heading">01 · Account</h2>
+   <p id="account-status" role="status">กำลังตรวจระบบเข้าสู่ระบบ…</p>
+   <p id="account-name" class="identity" hidden></p>
+   <div class="buttonbar">
+    <button id="login" type="button" disabled>Sign in with Google</button>
+    <button id="logout" type="button" hidden>Sign out</button>
+    <a class="secondary" href="/#guild-content" target="_blank" rel="noopener noreferrer">Assignments / Evidence ↗</a>
+   </div>
+  </section>
+  <section class="panel" aria-labelledby="party-heading">
+   <h2 id="party-heading">02 · Choose your Party</h2>
+   <label for="party-select">Your existing Guild party</label>
+   <select id="party-select" disabled><option value="">Sign in first</option></select>
+   <div class="buttonbar">
+    <button type="button" id="connect" disabled>Join online room</button>
+    <button type="button" id="disconnect" disabled>Leave room</button>
+    <button type="button" id="retry" disabled>Reconnect</button>
+   </div>
+   <p id="connection-status" class="hint" role="status">Multiplayer server not connected</p>
+   <p id="connection-error" class="error" role="alert"></p>
+  </section>
+  <section class="panel room" aria-labelledby="room-heading">
+   <div class="row"><h2 id="room-heading">03 · Party Roster</h2><span id="room-phase" class="tag">OFFLINE</span></div>
+   <p class="hint">Up to six authenticated students per room. Party Leader controls world movement; all connected eligible members vote in combat.</p>
+   <div id="roster" class="roster" aria-live="polite"></div>
+   <div id="leader-controls" hidden>
+    <label for="leader-transfer">Transfer leadership to a connected member</label>
+    <select id="leader-transfer"></select>
+    <button id="transfer" type="button">Transfer leader</button>
+   </div>
+  </section>
+  <section class="panel world" aria-labelledby="world-heading">
+   <div class="row"><h2 id="world-heading">04 · Shared World Map</h2><span id="world-location" class="tag">X:– Y:–</span></div>
+   <p class="hint">Tap a destination on the map. Only the verified Party Leader can move the group; all members see the same position.</p>
+   <svg id="world-map" viewBox="0 0 384 256" role="img" aria-label="Shared Guild map. Only leader can select a destination."></svg>
+   <div class="buttonbar">
+    <button class="destination" data-x="9" data-y="7" type="button" disabled>✦ Guild Master</button>
+    <button class="destination" data-x="17" data-y="10" type="button" disabled>⚔ Training Portal</button>
+    <button class="destination" data-x="9" data-y="9" type="button" disabled>⌂ Guild Center</button>
+   </div>
+   <p id="travel-status" class="hint">Waiting for party connection</p>
+   <div class="buttonbar"><button id="start-battle" type="button" disabled>Leader: Start shared battle</button></div>
+  </section>
+  <section class="panel battle" aria-labelledby="battle-heading">
+   <div class="row"><h2 id="battle-heading">05 · Team Battle Vote</h2><span id="battle-round" class="tag">NOT STARTED</span></div>
+   <p class="hint">All eligible members choose one action per ballot. The most-voted action wins. Ties use the leader's vote when tied, otherwise Guard.</p>
+   <div id="battle-stats"></div>
+   <p id="vote-status" role="status">Waiting for party battle</p>
+   <div id="vote-roster" class="roster"></div>
+   <div id="vote-options" class="votes"></div>
+   <div id="vote-results" class="results" aria-live="polite"></div>
+  </section>
+ </div>
+ <p class="footer-note">This preview does not award official XP or Gold. Existing personal assignment, evidence, and GM-review features remain in the original Guild portal. Server verification is required before online play.</p>
+</main>
+<script type="module" src="/jrpg/lobby/lobby.mjs"></script>
+</body>
+</html>

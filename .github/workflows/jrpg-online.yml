@@ -1,0 +1,47 @@
+name: JRPG Multiplayer Server Checks
+on:
+  push:
+    branches: [feature/pharmacy-guild-jrpg]
+    paths:
+      - 'jrpg-online/**'
+      - 'frontend/jrpg/lobby/**'
+      - 'backend/src/jrpg-room-rules.mjs'
+      - 'backend/test/jrpg-room-rules.test.mjs'
+      - '.github/workflows/jrpg-online.yml'
+  pull_request:
+    paths:
+      - 'jrpg-online/**'
+      - 'frontend/jrpg/lobby/**'
+      - 'backend/src/jrpg-room-rules.mjs'
+      - 'backend/test/jrpg-room-rules.test.mjs'
+      - '.github/workflows/jrpg-online.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned Guild dependencies
+        run: npm ci
+      - name: Existing app and six-player voting rules
+        run: npm test
+      - name: Multiplayer Worker + Durable Object unit tests
+        run: node --test jrpg-online/test/*.test.mjs
+      - name: Browser lobby client security and reconnect tests
+        run: node --test frontend/jrpg/lobby/test/*.test.mjs
+      - name: Syntax check
+        run: |
+          node --check jrpg-online/worker.mjs
+          node --check jrpg-online/room.mjs
+          node --check frontend/jrpg/lobby/client.mjs
+          node --check frontend/jrpg/lobby/lobby.mjs
+          node --check frontend/jrpg/lobby/map.mjs
+      - name: Install pinned Wrangler toolchain from backend lockfile
+        run: npm ci --prefix backend --include=dev --no-audit --no-fund
+      - name: Validate Cloudflare Worker bundle without deployment
+        run: ./backend/node_modules/.bin/wrangler deploy --dry-run --config jrpg-online/wrangler.jsonc --outdir /tmp/jrpg-online-bundle

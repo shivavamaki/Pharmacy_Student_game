@@ -3,7 +3,7 @@ on:
   pull_request:
     paths: ['backend/**', 'frontend/**', 'migration/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
   push:
-    branches: [main, migration/cloudflare-foundation, feature/pharmacy-guild-dos, feature/pharmacy-guild-playable-dos]
+    branches: [main, migration/cloudflare-foundation, feature/pharmacy-guild-dos, feature/pharmacy-guild-playable-dos, feature/pharmacy-guild-jrpg]
     paths: ['backend/**', 'frontend/**', 'migration/**', 'package.json', 'package-lock.json', '.github/workflows/backend-checks.yml']
 permissions:
   contents: read
@@ -16,5 +16,5 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
-      - run: for file in frontend/*.mjs; do node --check "$file"; done
+      - run: for file in frontend/*.mjs frontend/jrpg/*.mjs; do node --check "$file"; done
       - run: npm test

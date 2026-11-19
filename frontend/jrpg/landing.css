@@ -1,0 +1,12 @@
+/* Experimental JRPG landing skin; existing Firebase login IDs and app.js remain untouched. */
+body{background:radial-gradient(ellipse at 50% -15%,#3f647b,#192b4c 38%,#080f22 90%);color:#e4f2e5}
+.dos-command{background:#1d2b50;color:#f8d997;border-color:#bfa778}
+.dos-command>span:first-child,.intro .eyebrow{color:#f3d58d}
+.dos-cursor{display:none}
+.dos-accent,.brand small,.journey small{color:#f3d58d}
+.card,.game-card,.quest-card,.member{background:#192742;color:#e8f4ec;border-color:#9fb89e;box-shadow:5px 5px #070c1c}
+.dos-enter{margin-right:8px;margin-bottom:5px;background:#f2d08c;border-color:#fff0ba;color:#142039}
+.dos-enter:hover{background:#b5ebc3;color:#102439}
+.guild-scene{background:#172947;border-color:#abbc97}
+header.dos-topbar{background:#111e38;border-bottom-color:#8ca9a1}
+footer{border-top-color:#8ca9a1}

@@ -1,22 +1,37 @@
-# Pharmacy Guild — DOS Edition
+# Pharmacy Guild — Chronicles of the Four Seals (JRPG Edition)
 
-A mobile-friendly DOS-inspired web game built on the existing Cloudflare application.
+This branch is a separate, experimental classic JRPG version of the current Pharmacy Guild, not a replacement for the deployed app. **New co-op design:** leader-only map movement, 1–6 members voting on each turn-based team battle action, separate personal assignment permissions.
+
+## Entrypoints
+
+- Authenticated Guild dashboard and new JRPG landing: /
+- Playable standalone fictional learning simulation: /jrpg/
+- **Sprint 1 walkable Guild built with Phaser + TypeScript + Vite**: /jrpg/walk/ (GitHub Actions generates the static preview on this branch; see docs/jrpg-sprint1.md)
+- Existing DOS version frozen on checkpoint/pharmacy-guild-dos-20261119 (commit 30baa211)
+- Design document: docs/jrpg-game-design.md
 
 ## Architecture
-- Frontend: static ES modules, local pixel artwork, and DOS interface CSS in frontend/.
-- Authentication: existing Firebase Google sign-in and role checks.
-- Backend: Cloudflare Workers + D1; existing characters, parties, quests, progress and GM/admin controls stay intact.
-- PWA: manifest supports standalone presentation when the browser permits it. Offline gameplay is NOT enabled.
-- Old Google Apps Script runtime/source files have been removed from this branch only. They remain in Git history and on main.
 
-## Test
-Use Node.js 24+:
+Firebase Google Auth, Cloudflare Workers, D1, existing parties/quests/GM approval and character records are preserved for the main dashboard. The new /jrpg/ path currently runs isolated, session-only fiction with no authentication, API writes, real XP, Gold, grades or claims of official quest completion. It uses the original campaign pixel artwork and a simple browser-based turn system. Phaser is installed as an isolated jrpg-walk/ project for the walkable Guild Hall vertical slice; a complete interactive world remains future work.
 
-    npm ci
-    npm test
+## Validation
 
-## Preview deployment
-Deploy this branch to a separate Cloudflare Pages preview, serving frontend/ as site root with no build command. Before login can work on the preview hostname, add that hostname to Firebase authorized domains and configure the dev Worker ALLOWED_ORIGIN accordingly. API_ORIGIN currently points to the development Worker; no production traffic is changed by this commit.
+Node.js 24+ required. Run npm ci and npm test. Deploy the branch to a separate Cloudflare Pages preview with frontend/ as static output root, then validate the Google login domain and CORS before allowing real sign-in. No production D1 migrations are part of this branch.
 
-## Scope and limits
-This is a browser game with DOS-inspired UI, not a DOS emulator. Phaser is not yet installed. Do not migrate real users, reset passwords, change production D1 or merge the old Apps Script PR as part of this theme update. Historical migration instructions remain in MIGRATION.md; current DOS guidance is in docs/dos-edition.md.
+**Important:** The story demo allows chapter progression for testing. Real curriculum stages and GM authorizations remain server-controlled; the current worker still fixes OPD before IPD rather than using individual team rotation schedules.
+
+## Next steps
+
+See docs/jrpg-game-design.md for teaching objectives, acts, class mapping, encounter mechanics, safety criteria and rollout phases.
+
+## Voting status
+
+The walkable demo simulates six ballots **within one browser** for review. It does not connect six actual students online. The server-side voting domain model and tests are present, but Durable Object + WebSockets and real identity verification are still pending. The action with the most votes wins; ties use the leader's vote when tied, otherwise Guard.
+
+## Stage 2 — real multiplayer transport (development only)
+
+\`jrpg-online/\` contains a separate Cloudflare Worker + Durable Object WebSocket service for authenticated 1–6-student parties. It reuses the existing Firebase JWT verification and *read-only* student/party membership queries, enforces leader-only map movement, and validates majority-vote combat on the server. The new Worker has an **isolated Wrangler configuration, no automatic deploy job and no existing Guild API modifications**. CI builds it with \`wrangler --dry-run\`; connection to the current browser Guild demo is the next stage. See [jrpg-online/README.md](jrpg-online/README.md).
+
+## Multiplayer Lobby UI
+
+The staged browser UI is at `/jrpg/lobby/` on the JRPG preview branch. It reuses Firebase login, authenticates existing Guild parties, offers leader-only map controls and per-member team votes through the isolated WebSocket protocol. **No live room connection is available until the separate Cloudflare Worker is deployed and the public origin is explicitly configured.** See `jrpg-online/README.md`. The existing single-browser simulator remains at `/jrpg/walk/`.

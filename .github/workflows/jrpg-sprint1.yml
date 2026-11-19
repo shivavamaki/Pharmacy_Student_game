@@ -1,0 +1,84 @@
+name: JRPG Sprint 1 checks
+on:
+  push:
+    branches: [feature/pharmacy-guild-jrpg]
+    paths: ['jrpg-walk/**', 'frontend/jrpg/**', '.github/workflows/jrpg-sprint1.yml']
+  pull_request:
+    paths: ['jrpg-walk/**', 'frontend/jrpg/**', '.github/workflows/jrpg-sprint1.yml']
+permissions:
+  contents: read
+jobs:
+  build-test:
+    # Auto-generated preview commits should deploy through Cloudflare but not cause CI publish loops.
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, 'publish walkable preview assets') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify legacy Guild tests remain green
+        run: npm ci && npm test
+      - name: Install isolated Phaser / Vite / TypeScript app
+        run: npm install --prefix jrpg-walk --no-audit --no-fund
+      - name: Check pure world and battle logic
+        run: npm run test --prefix jrpg-walk
+      - name: Type-check and build static walkable Guild
+        run: npm run build --prefix jrpg-walk
+      - name: Verify generated entrypoint
+        run: |
+          test -f frontend/jrpg/walk/index.html
+          grep -q 'assets/' frontend/jrpg/walk/index.html
+      - name: Install headless Chromium for desktop and mobile emulation
+        run: cd jrpg-walk && npx playwright install --only-shell chromium
+      - name: Run browser interaction checks
+        run: npm run test:e2e --prefix jrpg-walk
+      - name: Upload deployable static game
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jrpg-walk-build
+          path: frontend/jrpg/walk/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload browser test traces on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: jrpg-walk-traces
+          path: jrpg-walk/test-results/
+          if-no-files-found: ignore
+
+  publish-preview-assets:
+    # Only publishes built static files to the isolated JRPG feature branch.
+    # The existing Cloudflare Pages Git integration then deploys that branch's preview.
+    # Does not modify main, the DOS checkpoint, backend, D1, or Cloudflare settings.
+    needs: build-test
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/feature/pharmacy-guild-jrpg' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/pharmacy-guild-jrpg
+          persist-credentials: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: jrpg-walk-build
+          path: frontend/jrpg/walk/
+      - name: Publish checked build to feature branch only
+        run: |
+          set -euo pipefail
+          test -f frontend/jrpg/walk/index.html
+          test -n "$(find frontend/jrpg/walk/assets -type f -name '*.js' -print -quit)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f frontend/jrpg/walk/index.html frontend/jrpg/walk/assets
+          if git diff --cached --quiet; then
+            echo "Compiled preview already matches this branch."
+          else
+            git commit -m "build(jrpg): publish walkable preview assets"
+            git push origin HEAD:feature/pharmacy-guild-jrpg
+          fi
