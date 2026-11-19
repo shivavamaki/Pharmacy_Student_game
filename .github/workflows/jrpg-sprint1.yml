@@ -10,7 +10,7 @@ permissions:
 jobs:
   build-test:
     # Auto-generated preview commits should deploy through Cloudflare but not cause CI publish loops.
-    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, 'build(jrpg): publish walkable preview assets') }}
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, 'publish walkable preview assets') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
