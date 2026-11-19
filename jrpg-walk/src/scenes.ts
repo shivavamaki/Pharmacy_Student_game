@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE,WORLD_HEIGHT,WORLD_WIDTH,PLAYER_START,GUILD_MASTER,TRAINING_PORTAL,tileAt,nextTile,canInteract } from './world.mjs';
+import { TILE_SIZE,WORLD_HEIGHT,WORLD_WIDTH,PLAYER_START,GUILD_MASTER,TRAINING_PORTAL,tileAt,routeToDestination,canInteract } from './world.mjs';
 import { createHeroTextures, type Direction } from './sprite';
 
 export const WORLD_SIZE = {width: WORLD_WIDTH*TILE_SIZE,height: WORLD_HEIGHT*TILE_SIZE};
@@ -34,77 +34,131 @@ export class BootScene extends Phaser.Scene {
   this.scene.start('Guild');
  }
 }
+type Tile={x:number;y:number};
+type TravelPlan={path:Tile[];target:Tile;destination:Tile;interaction:'guild-master'|'training-portal'|null};
+
 export class GuildScene extends Phaser.Scene {
- private pos={...PLAYER_START};
+ private pos:Tile={...PLAYER_START};
  private hero!:Phaser.GameObjects.Sprite;
  private direction:Direction='down';
  private walking=false;
- private gameMode='explore';
- private keyListener=(event:KeyboardEvent)=>{
-   if(this.game.registry.get('mode')!=='explore')return;
-   if(event.target instanceof HTMLElement && ['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName))return;
-   const k=event.key.toLowerCase();
-   if(['arrowup','w','arrowleft','a','arrowdown','s','arrowright','d','e','enter',' '].includes(k))event.preventDefault();
-   const dirs:Record<string,[number,number]>={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]};
-   if(dirs[k])this.walk(...dirs[k]);
-   else if(k==='e'||k==='enter'||k===' ')this.interact();
+ private pendingDestination:Tile|null=null;
+ private plan:TravelPlan|null=null;
+ private path:Tile[]=[];
+ private travelMarks!:Phaser.GameObjects.Graphics;
+
+ // Movement is intentionally destination-based: no directional stepping controls.
+ private onMapPointer=(pointer:Phaser.Input.Pointer)=>{
+  if(this.game.registry.get('mode')!=='explore')return;
+  const point=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
+  this.chooseDestination(Math.floor(point.x/TILE_SIZE),Math.floor(point.y/TILE_SIZE));
  };
- private onMove=(dx:number,dy:number)=>{if(this.game.registry.get('mode')==='explore')this.walk(dx,dy);};
+ private onChooseDestination=(x:number,y:number)=>this.chooseDestination(x,y);
  private onInteract=()=>{if(this.game.registry.get('mode')==='explore')this.interact();};
+ private onKeyboard=(event:KeyboardEvent)=>{
+  if(this.game.registry.get('mode')!=='explore')return;
+  if(event.target instanceof HTMLElement&&['INPUT','SELECT','TEXTAREA','BUTTON'].includes(event.target.tagName))return;
+  if(['e','enter',' '].includes(event.key.toLowerCase())){
+    event.preventDefault();this.interact();
+  }
+ };
  constructor(){super({key:'Guild'});}
  create(){
-  this.pos={...PLAYER_START};
+  this.pos={...PLAYER_START};this.pendingDestination=null;this.plan=null;this.path=[];this.walking=false;
   this.game.registry.set('mode','explore');
   this.cameras.main.setBounds(0,0,WORLD_SIZE.width,WORLD_SIZE.height);
   this.cameras.main.setBackgroundColor('#172d3b');
   for(let y=0;y<WORLD_HEIGHT;y++)for(let x=0;x<WORLD_WIDTH;x++){
-    const key=tileAt(x,y);
-    this.add.image(x*TILE_SIZE+TILE_SIZE/2,y*TILE_SIZE+TILE_SIZE/2,'tile-'+key).setDepth(0);
+   this.add.image(x*TILE_SIZE+8,y*TILE_SIZE+8,'tile-'+tileAt(x,y)).setDepth(0);
   }
   this.add.text(80,40,'GUILD HALL',{fontFamily:'monospace',fontSize:'9px',color:'#ffedb0',backgroundColor:'#16223b'}).setOrigin(0.5).setDepth(1);
   this.add.text(170,40,'TRAINING GROUNDS',{fontFamily:'monospace',fontSize:'8px',color:'#ffedb0',backgroundColor:'#16223b'}).setOrigin(0.5).setDepth(1);
+  this.travelMarks=this.add.graphics().setDepth(2);
   this.add.sprite(GUILD_MASTER.x*TILE_SIZE+8,GUILD_MASTER.y*TILE_SIZE+8,'guild-master').setDepth(3);
   this.add.text(GUILD_MASTER.x*TILE_SIZE+8,GUILD_MASTER.y*TILE_SIZE-12,'✦',{fontSize:'14px',color:'#ffe69b'}).setOrigin(0.5).setDepth(3);
-  this.add.image(TRAINING_PORTAL.x*TILE_SIZE+8,TRAINING_PORTAL.y*TILE_SIZE+8,'portal').setDepth(2);
+  this.add.image(TRAINING_PORTAL.x*TILE_SIZE+8,TRAINING_PORTAL.y*TILE_SIZE+8,'portal').setDepth(3);
   this.add.text(TRAINING_PORTAL.x*TILE_SIZE+8,TRAINING_PORTAL.y*TILE_SIZE-10,'⚔',{fontSize:'12px',color:'#ffedb0'}).setOrigin(0.5).setDepth(3);
   this.hero=this.add.sprite(this.pos.x*TILE_SIZE+8,this.pos.y*TILE_SIZE+8,'hero-down-0').setDepth(4);
   this.cameras.main.startFollow(this.hero,false,0.18,0.18);
   this.cameras.main.setRoundPixels(true);
-  this.input.keyboard?.on('keydown',this.keyListener);
-  this.game.events.on('guild:move',this.onMove);
+
+  this.input.on('pointerdown',this.onMapPointer);
+  this.input.keyboard?.on('keydown',this.onKeyboard);
+  this.game.events.on('guild:select-destination',this.onChooseDestination);
   this.game.events.on('guild:interact',this.onInteract);
   this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{
-    this.input.keyboard?.off('keydown',this.keyListener);
-    this.game.events.off('guild:move',this.onMove);
+    this.input.off('pointerdown',this.onMapPointer);
+    this.input.keyboard?.off('keydown',this.onKeyboard);
+    this.game.events.off('guild:select-destination',this.onChooseDestination);
     this.game.events.off('guild:interact',this.onInteract);
   });
   this.announce();
   const won=!!this.game.registry.get('trainingWon');
-  this.game.events.emit('guild:status',won?'Training simulation complete · no official XP/Gold awarded':'Explore the Guild: talk to the Guild Master ✦');
+  this.game.events.emit('guild:status',won?'Training simulation complete · no official XP/Gold awarded':'Tap a destination on the map, or select the Guild Master ✦');
  }
- private announce(){
-  this.game.events.emit('guild:position',this.pos.x,this.pos.y);
+ private announce(){this.game.events.emit('guild:position',this.pos.x,this.pos.y);}
+ private drawTravelPlan(plan:TravelPlan){
+  this.travelMarks.clear();
+  this.travelMarks.fillStyle(0xf5dea2,0.55);
+  for(const step of plan.path)this.travelMarks.fillCircle(step.x*TILE_SIZE+8,step.y*TILE_SIZE+8,2);
+  this.travelMarks.lineStyle(2,0xffe48e,1);
+  this.travelMarks.strokeCircle(plan.target.x*TILE_SIZE+8,plan.target.y*TILE_SIZE+8,6);
  }
- private walk(dx:number,dy:number){
+ private chooseDestination(x:number,y:number){
+  if(this.game.registry.get('mode')!=='explore')return;
+  const destination={x,y};
+  const route=routeToDestination(this.pos,destination) as TravelPlan|null;
+  if(!route){
+   this.game.events.emit('guild:status','Destination blocked or unreachable — select a free tile');
+   return;
+  }
+  if(this.walking){
+   // Recompute from the *arrived* tile after the current animation step; never teleport.
+   this.pendingDestination=destination;
+   this.drawTravelPlan(route);
+   this.game.events.emit('guild:status','New destination selected — rerouting after this step');
+   return;
+  }
+  this.pendingDestination=null;
+  this.plan=route;this.path=[...route.path];
+  this.drawTravelPlan(route);
+  this.game.events.emit('guild:status','Walking to selected map tile X:'+x+' Y:'+y);
+  this.nextStep();
+ }
+ private nextStep(){
   if(this.walking||this.game.registry.get('mode')!=='explore')return;
-  if(Math.abs(dx)+Math.abs(dy)!==1)return;
+  const next=this.path.shift();
+  if(!next){
+   const completed=this.plan;this.plan=null;this.travelMarks.clear();
+   if(completed?.interaction)this.interact();
+   else this.game.events.emit('guild:status','Arrived — tap another destination on the map');
+   return;
+  }
+  const dx=next.x-this.pos.x,dy=next.y-this.pos.y;
   this.direction=dx<0?'left':dx>0?'right':dy<0?'up':'down';
-  const target=nextTile(this.pos,dx,dy);
-  if(target===this.pos){this.hero.setTexture('hero-'+this.direction+'-0');return;}
-  this.pos=target;this.walking=true;
-  this.hero.play('hero-walk-'+this.direction,true);
-  this.tweens.add({targets:this.hero,x:target.x*TILE_SIZE+8,y:target.y*TILE_SIZE+8,duration:135,ease:'Linear',
-   onComplete:()=>{this.hero.stop();this.hero.setTexture('hero-'+this.direction+'-0');this.walking=false;this.announce();}});
+  this.walking=true;this.hero.play('hero-walk-'+this.direction,true);
+  this.tweens.add({targets:this.hero,x:next.x*TILE_SIZE+8,y:next.y*TILE_SIZE+8,
+   duration:140,ease:'Linear',onComplete:()=>{
+    this.pos=next;this.walking=false;
+    this.hero.stop();this.hero.setTexture('hero-'+this.direction+'-0');
+    this.announce();
+    if(this.pendingDestination){
+      const target=this.pendingDestination;this.pendingDestination=null;
+      this.chooseDestination(target.x,target.y);
+    }else this.nextStep();
+   }});
  }
  private interact(){
   if(this.walking)return;
   if(canInteract(this.pos,GUILD_MASTER)){
-    this.game.registry.set('mode','dialogue');
-    this.game.events.emit('guild:dialogue','ยินดีต้อนรับ ผู้ฝึกเภสัชกร! เจ้าจงฟัง ตรวจสอบ วิเคราะห์ และวางแผน หากไม่แน่ใจ จงปรึกษาผู้ควบคุมการฝึก ก่อนลองเผชิญหน้าหมอกแห่งความสับสน');
+   this.plan=null;this.path=[];this.travelMarks.clear();
+   this.game.registry.set('mode','dialogue');
+   this.game.events.emit('guild:dialogue','ยินดีต้อนรับ ผู้ฝึกเภสัชกร! เจ้าจงฟัง ตรวจสอบ วิเคราะห์ และวางแผน หากไม่แน่ใจ จงปรึกษาผู้ควบคุมการฝึก ก่อนลองเผชิญหน้าหมอกแห่งความสับสน');
   }else if(canInteract(this.pos,TRAINING_PORTAL)){
-    this.scene.start('Encounter');
+   this.plan=null;this.path=[];this.travelMarks.clear();
+   this.scene.start('Encounter');
   }else{
-    this.game.events.emit('guild:status','Approach Guild Master ✦ or the violet training portal ⚔, then press E / Explore');
+   this.game.events.emit('guild:status','Tap Guild Master ✦ or Training Portal ⚔ on the map to walk there');
   }
  }
 }
