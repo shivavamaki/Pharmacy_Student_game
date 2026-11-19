@@ -32,7 +32,7 @@ export function createHeroTextures(scene:Phaser.Scene){
  const g=scene.add.graphics();g.setVisible(false);
  for(const dir of dirs){for(let frame=0;frame<3;frame++){
    const lines=rows.map((r,y)=>{
-     let pattern=r;
+     let pattern:string=r;
      if(y>=11&&y<=14&&frame!==0){
        const a=[...pattern];if(frame===1){a[5]='.';a[6]='P';a[9]='.';a[10]='B';}
        else {a[5]='B';a[6]='.';a[9]='P';a[10]='.';}pattern=a.join('');

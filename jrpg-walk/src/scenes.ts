@@ -42,7 +42,7 @@ export class GuildScene extends Phaser.Scene {
  private gameMode='explore';
  private keyListener=(event:KeyboardEvent)=>{
    if(this.game.registry.get('mode')!=='explore')return;
-   if(event.target instanceof HTMLElement && ['INPUT','SELECT','TEXTAREA','BUTTON'].includes(event.target.tagName))return;
+   if(event.target instanceof HTMLElement && ['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName))return;
    const k=event.key.toLowerCase();
    if(['arrowup','w','arrowleft','a','arrowdown','s','arrowright','d','e','enter',' '].includes(k))event.preventDefault();
    const dirs:Record<string,[number,number]>={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]};

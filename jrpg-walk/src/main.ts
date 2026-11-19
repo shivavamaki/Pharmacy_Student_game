@@ -4,10 +4,10 @@ import {BootScene,GuildScene,EncounterScene} from './scenes';
 import {chapters} from '../../frontend/jrpg/data.mjs';
 import {startBattle,applyAction,ACTIONS} from '../../frontend/jrpg/engine.mjs';
 
-type ActiveBattle=ReturnType<typeof startBattle>;
+type ActiveBattle=Omit<ReturnType<typeof startBattle>,'seals'> & {seals:string[]};
 const $=(id:string)=>{const element=document.getElementById(id);if(!element)throw new Error('Missing UI: '+id);return element;};
 const make=(tag:string,text:string,cls?:string)=>{const element=document.createElement(tag);element.textContent=text;if(cls)element.className=cls;return element;};
-const training=chapters.find(ch=>ch.id==='training');
+const training=chapters.find(ch=>ch.id==='training')!;
 if(!training)throw new Error('Training chapter missing');
 let battle:ActiveBattle|null=null;
 const dialogue=$('dialogue'),battleWindow=$('battle-overlay');
@@ -23,8 +23,8 @@ function actionButton(label:string,onClick:()=>void,cls=''){
 }
 function action(actionId:string){
  if(!battle||battle.status!=='active')return;
- battle=applyAction(battle,training,actionId);
- if(battle.status==='won'){
+ battle=applyAction(battle as unknown as ReturnType<typeof startBattle>,training,actionId) as ActiveBattle;
+ if(battle?.status==='won'){
   game.registry.set('trainingWon',true);
   $('journal').textContent='✦ ฝึกจำลองสำเร็จ · โปรดให้ GM ตรวจภารกิจจริงแยกต่างหาก';
  }
