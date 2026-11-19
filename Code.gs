@@ -23,13 +23,14 @@ function doGet(e) {
   t.webAppUrl = ScriptApp.getService().getUrl() || '';
   return t.evaluate()
     .setTitle(page === 'recap' ? 'Adventure Recape' : CFG.APP_TITLE)
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-function setupDatabase() {
+// Only an authenticated GM can request schema initialization through the web app.
+// Initial provisioning must be done by a trusted script editor, not a public page.
+function setupDatabase(token) {
+  requireGM_(requireSession_(token));
   ensureDatabase_();
-  seedDemoData_();
   return { ok: true, message: 'Database initialized', sheets: Object.values(CFG.SHEETS) };
 }
 
@@ -53,7 +54,6 @@ function ensureDatabase_() {
     }
   });
 
-  migratePlainPasswords_();
 }
 
 function getSheetDefinitions_() {
@@ -102,32 +102,8 @@ function getSheetDefinitions_() {
   };
 }
 
-function seedDemoData_() {
-  ensureDatabase_();
-  seedUsers_();
-  seedQuestTemplates_();
-  seedParties_();
-  return { ok: true };
-}
-
-function seedUsers_() {
-  const sh = sheet_(CFG.SHEETS.USERS);
-  const rows = sh.getDataRange().getValues();
-  const existingUsernames = rows.slice(1).map(r => String(r[1] || '').trim().toLowerCase());
-
-  const now = new Date();
-  const users = [
-    ['USR-ADMIN','makin',hashPassword_('0128662'),'GM ศิวาวุธ','BKN','All','admin','Campaign Master','',1,0,'active',false,now,now],
-    ['USR-001','สกาวใจ ชาวงษ์',hashPassword_('สกาวใจ ชาวงษ์'),'สกาวใจ ชาวงษ์','EAU','Rotation 1','student','Clinical Alchemist','PTY-001',2,190,'active',true,now,now],
-    ['USR-002','ปวริศ วงศ์วัฒนาเสถียร',hashPassword_('ปวริศ วงศ์วัฒนาเสถียร'),'ปวริศ วงศ์วัฒนาเสถียร','มอ','Rotation 1','student','Prescription Ranger','PTY-001',2,170,'active',true,now,now],
-    ['USR-003','ไปรยา จันทมงคล',hashPassword_('ไปรยา จันทมงคล'),'ไปรยา จันทมงคล','มอบ','Rotation 1','student','Counseling Bard','PTY-001',2,165,'active',true,now,now],
-    ['USR-TEST','test',hashPassword_('test'),'Test User','Demo','Rotation 1','student','Test Mage','',1,0,'active',true,now,now]
-  ];
-
-  const missing = users.filter(user => !existingUsernames.includes(String(user[1]).trim().toLowerCase()));
-  if (missing.length === 0) return;
-  sh.getRange(sh.getLastRow() + 1, 1, missing.length, missing[0].length).setValues(missing);
-}
+// Do not seed real users or predictable credentials from a public repository.
+// Create/import accounts securely during deployment; rotate any historical passwords.
 
 function seedParties_() {
   const sh = sheet_(CFG.SHEETS.PARTIES);
@@ -173,50 +149,23 @@ function seedQuestTemplates_() {
 
 function login(username, password) {
   ensureDatabase_();
-  debugLog_('login:start', {
-    username: username,
-    passwordLength: String(password || '').length
-  });
   const rows = readObjects_(CFG.SHEETS.USERS);
   const user = rows.find(r =>
     String(r.Username).trim().toLowerCase() === String(username).trim().toLowerCase() &&
     String(r.Status).toLowerCase() === 'active'
   );
-  debugLog_('login:userLookup', {
-    username: username,
-    found: !!user,
-    userId: user && user.UserID,
-    status: user && user.Status,
-    storedPasswordInfo: user ? passwordDebugInfo_(user.PasswordHash) : null
-  });
   if (!user || !passwordMatches_(user, password)) {
-    debugLog_('login:failed', {
-      username: username,
-      found: !!user,
-      userId: user && user.UserID
-    });
     throw new Error('Username or password is incorrect');
   }
 
   const token = Utilities.getUuid();
   const payload = {
     userId: user.UserID,
-    role: user.Role,
     createdAt: Date.now(),
     expiresAt: Date.now() + CFG.SESSION_HOURS * 3600000
   };
   CacheService.getScriptCache().put('SESSION_' + token, JSON.stringify(payload), CFG.SESSION_HOURS * 3600);
-  debugLog_('login:success', {
-    userId: user.UserID,
-    role: user.Role,
-    expiresAt: payload.expiresAt
-  });
-
-  return {
-    ok: true,
-    token,
-    user: sanitizeUser_(user)
-  };
+  return { ok: true, token, user: sanitizeUser_(user) };
 }
 
 function getCurrentUser(token) {
@@ -260,6 +209,11 @@ function acceptQuest(token, questId, partyId, partyRoles) {
   const quest = findBy_(CFG.SHEETS.QUESTS, 'QuestID', questId);
   const party = findBy_(CFG.SHEETS.PARTIES, 'PartyID', partyId);
   if (!quest || !party) throw new Error('Quest or party not found');
+  if (String(quest.Status).toLowerCase() !== 'available') throw new Error('Quest is locked');
+  if (readObjects_(CFG.SHEETS.ASSIGNMENTS).some(a =>
+    a.PartyID === partyId && a.QuestID === questId &&
+    !['completed', 'archived'].includes(String(a.Status))
+  )) throw new Error('Quest is already assigned to this party');
 
   const now = new Date();
   const id = 'ASN-' + Utilities.getUuid().slice(0,8);
@@ -289,6 +243,10 @@ function saveDailyProgress(token, data) {
   const now = new Date();
   const assignment = findBy_(CFG.SHEETS.ASSIGNMENTS,'AssignmentID',data.assignmentId);
   if (!assignment) throw new Error('Assignment not found');
+  requirePartyAccess_(s, assignment.PartyID);
+  const progress = Number(data.progressPercent);
+  if (!Number.isFinite(progress) || progress < 0 || progress > 100) throw new Error('Progress must be 0-100');
+  if (!['green','yellow','red'].includes(String(data.risk))) throw new Error('Invalid risk');
 
   appendObject_(CFG.SHEETS.DAILY,{
     ProgressID:'DLY-'+Utilities.getUuid().slice(0,8),
@@ -300,7 +258,7 @@ function saveDailyProgress(token, data) {
     Obstacle:data.obstacle || '',
     NeedGMSupport:data.needGMSupport || '',
     Risk:data.risk || 'green',
-    ProgressPercent:Number(data.progressPercent || 0),
+    ProgressPercent:progress,
     SubmittedBy:s.userId,
     GMComment:'',
     GMReviewedAt:'',
@@ -308,7 +266,7 @@ function saveDailyProgress(token, data) {
   });
 
   updateBy_(CFG.SHEETS.ASSIGNMENTS,'AssignmentID',data.assignmentId,{
-    Progress:Number(data.progressPercent || 0),
+    Progress:progress,
     Risk:data.risk || 'green',
     UpdatedAt:now
   });
@@ -321,6 +279,7 @@ function submitEvidence(token, data) {
   const s = requireSession_(token);
   const assignment = findBy_(CFG.SHEETS.ASSIGNMENTS,'AssignmentID',data.assignmentId);
   if (!assignment) throw new Error('Assignment not found');
+  requirePartyAccess_(s, assignment.PartyID);
 
   const id='EVD-'+Utilities.getUuid().slice(0,8);
   appendObject_(CFG.SHEETS.EVIDENCE,{
@@ -364,9 +323,14 @@ function completeQuest(token, assignmentId) {
   const s = requireSession_(token);
   requireGM_(s);
   const assignment = findBy_(CFG.SHEETS.ASSIGNMENTS,'AssignmentID',assignmentId);
+  if (!assignment) throw new Error('Assignment not found');
+  if (String(assignment.Status) === 'completed') throw new Error('Quest already completed');
   const quest = findBy_(CFG.SHEETS.QUESTS,'QuestID',assignment.QuestID);
   const party = findBy_(CFG.SHEETS.PARTIES,'PartyID',assignment.PartyID);
-  if (!assignment || !quest || !party) throw new Error('Data not found');
+  if (!quest || !party) throw new Error('Data not found');
+  const approved = readObjects_(CFG.SHEETS.EVIDENCE).some(e =>
+    e.AssignmentID === assignmentId && e.ReviewStatus === 'approved');
+  if (!approved) throw new Error('Approved evidence required');
 
   updateBy_(CFG.SHEETS.ASSIGNMENTS,'AssignmentID',assignmentId,{
     Status:'completed',Progress:100,UpdatedAt:new Date()
@@ -459,100 +423,42 @@ function updateBy_(name,key,value,patch) {
   });
 }
 
-function hashPassword_(value) {
-  return String(value || '').replace(/\u00a0/g, ' ').trim();
+function normalizePassword_(value) {
+  return String(value == null ? '' : value).replace(/\u00a0/g, ' ').trim();
+}
+
+function sha256Hex_(value) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value, Utilities.Charset.UTF_8)
+    .map(b => ('0' + (b & 255).toString(16)).slice(-2)).join('');
+}
+
+// Transitional salted SHA-256 hashing for the legacy Apps Script app.
+// Prefer a managed identity provider (such as Firebase Auth) for production.
+function hashPassword_(password) {
+  const salt = Utilities.getUuid().replace(/-/g, '');
+  return 'sha256$' + salt + '$' + sha256Hex_(salt + ':' + normalizePassword_(password));
 }
 
 function passwordMatches_(user, password) {
-  const plainPassword = hashPassword_(password);
-  const storedPassword = hashPassword_(user.PasswordHash);
-  const defaultPassword = getDefaultPassword_(user);
-  debugLog_('passwordMatches:start', {
-    userId: user.UserID,
-    username: user.Username,
-    storedPasswordInfo: passwordDebugInfo_(storedPassword),
-    typedPasswordInfo: passwordDebugInfo_(plainPassword),
-    defaultPasswordInfo: passwordDebugInfo_(defaultPassword),
-    storedEqualsTyped: storedPassword === plainPassword,
-    typedEqualsDefault: plainPassword === defaultPassword,
-    storedIsLegacy: isLegacyPasswordValue_(storedPassword)
-  });
-  if (storedPassword === plainPassword) return true;
-
-  if (plainPassword === defaultPassword && isLegacyPasswordValue_(storedPassword)) {
-    updateBy_(CFG.SHEETS.USERS, 'UserID', user.UserID, {
-      PasswordHash: defaultPassword,
-      UpdatedAt: new Date()
-    });
-    debugLog_('passwordMatches:migratedLegacyPassword', {
-      userId: user.UserID,
-      username: user.Username
-    });
-    return true;
+  const input = normalizePassword_(password);
+  const stored = String(user.PasswordHash || '');
+  if (!input || !stored) return false;
+  if (stored.indexOf('sha256$') === 0) {
+    const fields = stored.split('$');
+    if (fields.length !== 3 || !/^[a-f0-9]{32}$/i.test(fields[1]) ||
+        !/^[a-f0-9]{64}$/i.test(fields[2])) return false;
+    return sha256Hex_(fields[1] + ':' + input) === fields[2];
   }
-
-  debugLog_('passwordMatches:noMatch', {
-    userId: user.UserID,
-    username: user.Username
+  // One-time migration for existing plaintext accounts; never infer a default
+  // password from username or accept old unknown SHA-256 values as a bypass.
+  if (/^[a-f0-9]{64}$/i.test(stored) || stored !== input) return false;
+  updateBy_(CFG.SHEETS.USERS, 'UserID', user.UserID, {
+    PasswordHash: hashPassword_(input),
+    MustChangePassword: true,
+    UpdatedAt: new Date()
   });
-  return false;
-}
-
-function migratePlainPasswords_() {
-  const ss = SpreadsheetApp.getActive();
-  const sh = ss.getSheetByName(CFG.SHEETS.USERS);
-  if (!sh || sh.getLastRow() < 2) return;
-
-  const data = sh.getDataRange().getValues();
-  const headers = data[0];
-  const passCol = headers.indexOf('PasswordHash');
-  const usernameCol = headers.indexOf('Username');
-  const updatedCol = headers.indexOf('UpdatedAt');
-  if (passCol < 0 || usernameCol < 0) return;
-
-  data.slice(1).forEach((row, i) => {
-    const currentPassword = hashPassword_(row[passCol]);
-    if (!isLegacyPasswordValue_(currentPassword)) return;
-
-    const user = Object.fromEntries(headers.map((h, c) => [h, row[c]]));
-    sh.getRange(i + 2, passCol + 1).setValue(getDefaultPassword_(user));
-    if (updatedCol >= 0) sh.getRange(i + 2, updatedCol + 1).setValue(new Date());
-    debugLog_('migratePlainPasswords_:rowMigrated', {
-      row: i + 2,
-      userId: user.UserID,
-      username: user.Username,
-      oldPasswordInfo: passwordDebugInfo_(currentPassword),
-      newPasswordInfo: passwordDebugInfo_(getDefaultPassword_(user))
-    });
-  });
-}
-
-function getDefaultPassword_(user) {
-  const username = hashPassword_(user && user.Username);
-  if (username.toLowerCase() === 'makin') return '0128662';
-  return username;
-}
-
-function isLegacyPasswordValue_(value) {
-  const password = hashPassword_(value);
-  return password === '' || /^[a-f0-9]{64}$/i.test(password);
-}
-
-function passwordDebugInfo_(value) {
-  const text = hashPassword_(value);
-  return {
-    length: text.length,
-    empty: text === '',
-    legacySha256Shape: /^[a-f0-9]{64}$/i.test(text),
-    firstCharCode: text ? text.charCodeAt(0) : '',
-    lastCharCode: text ? text.charCodeAt(text.length - 1) : ''
-  };
-}
-
-function debugLog_(event, data) {
-  const payload = Object.assign({ event: event, at: new Date().toISOString() }, data || {});
-  console.log(JSON.stringify(payload));
-  Logger.log(JSON.stringify(payload));
+  user.MustChangePassword = true;
+  return true;
 }
 
 function sanitizeUser_(u) {
@@ -568,7 +474,20 @@ function requireSession_(token) {
   if (!raw) throw new Error('Session expired');
   const session = JSON.parse(raw);
   if (Date.now() > session.expiresAt) throw new Error('Session expired');
-  return session;
+  const user = findBy_(CFG.SHEETS.USERS, 'UserID', session.userId);
+  if (!user || String(user.Status).toLowerCase() !== 'active') {
+    throw new Error('Account is no longer active');
+  }
+  // The current role is read from the database, not trusted from an old token.
+  return { userId: user.UserID, role: String(user.Role).toLowerCase(), expiresAt: session.expiresAt };
+}
+
+function requirePartyAccess_(session, partyId) {
+  if (['admin', 'gm', 'preceptor'].includes(session.role)) return;
+  const user = findBy_(CFG.SHEETS.USERS, 'UserID', session.userId);
+  if (!user || String(user.PartyID) !== String(partyId)) {
+    throw new Error('Not allowed to modify another party');
+  }
 }
 
 function requireGM_(session) {
@@ -636,11 +555,11 @@ function getGMQueue(token) {
         party: parties.find(p => p.PartyID === a.PartyID) || null
       })),
     evidence: evidence
-      .filter(e => ['waiting_review','revision_required'].includes(String(e.ReviewStatus)))
+      .filter(e => ['waiting_review','revision_required','approved'].includes(String(e.ReviewStatus)))
       .map(e => Object.assign({}, e, {
         quest: quests.find(q => q.QuestID === e.QuestID) || null,
         party: parties.find(p => p.PartyID === e.PartyID) || null,
-        submitter: users.find(u => u.UserID === e.SubmittedBy) || null
+        submitter: sanitizeUser_(users.find(u => u.UserID === e.SubmittedBy))
       }))
   };
 }
@@ -658,17 +577,18 @@ function reviewDailyProgress(token, progressId, comment) {
 function changePassword(token, currentPassword, newPassword) {
   const s = requireSession_(token);
   const user = findBy_(CFG.SHEETS.USERS, 'UserID', s.userId);
-  if (user.PasswordHash !== hashPassword_(currentPassword)) throw new Error('Current password is incorrect');
-  if (!newPassword || String(newPassword).length < 6) throw new Error('New password must have at least 6 characters');
+  if (!passwordMatches_(user, currentPassword)) throw new Error('Current password is incorrect');
+  const normalized = normalizePassword_(newPassword);
+  if (normalized.length < 10) throw new Error('New password must have at least 10 characters');
+  if (normalized === normalizePassword_(currentPassword)) throw new Error('Choose a different password');
   updateBy_(CFG.SHEETS.USERS, 'UserID', s.userId, {
-    PasswordHash: hashPassword_(newPassword),
+    PasswordHash: hashPassword_(normalized),
     MustChangePassword: false,
     UpdatedAt: new Date()
   });
-  return { ok: true };
+  CacheService.getScriptCache().remove('SESSION_' + token);
+  return { ok: true, message: 'Password changed. Sign in again.' };
 }
-
-
 
 
 /* ---------- STEP 13: ADVENTURE RECAPE ---------- */
@@ -784,7 +704,7 @@ function saveQuestResponse(payload) {
       patch.messageToJunior || '',patch.secretMessage || '',
       results.questScore || '',results.rank || '',
       results.endingTitle || '',results.endingText || '',
-      JSON.stringify(payload)
+      JSON.stringify({action:payload.action, app:payload.app, version:payload.version, response:payload.response})
     ];
     const sh = getAdventureRecapSheet_();
     sh.appendRow(row);
