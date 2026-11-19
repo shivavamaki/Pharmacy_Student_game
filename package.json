@@ -1,8 +1,10 @@
 {
   "name": "pharmacy-student-game",
   "private": true,
-  "workspaces": ["backend"],
+  "workspaces": [
+    "backend"
+  ],
   "scripts": {
-    "test": "npm test --workspace backend"
+    "test": "npm test --workspace backend && node --test frontend/test/*.test.mjs"
   }
 }
