@@ -2,6 +2,10 @@
 
 **Status:** new experimental version, distinct from the saved DOS Edition. **Implementation:** prototype first, no production deploy or D1 writes. **Genre:** original 16-bit-inspired story JRPG, turn-based encounters, party exploration, tactical choices, story/dialogue, on web and mobile. References to classic Japanese RPGs describe a genre, **not** a request to copy licensed graphics, characters, music, or dialogue.
 
+## Multiplayer requirement (updated 2026-11-19)
+
+The completed JRPG must provide **live synchronous online cooperative play for 1–6 real players per room**. Students each control their own character, with strictly turn-based battles and server-owned turn order, answers, timers, room capacity and outcome. Current Phaser walkable demo remains solo; online room transport is not implemented yet. See [jrpg-online-coop.md](jrpg-online-coop.md).
+
 ## Vision and audience
 
 A five-week pharmacy clerkship becomes an adventure across the city of **Arogea (อาโรเกีย)**. The threat is not a patient or a disease: it is the **Fog of Fragmentation**, misinformation, incomplete histories, communication failures, and unsafe processes. The students are apprentice pharmacists; NPC patients are people the guild protects. Under the guidance of a real GM/preceptor, their party restores the four seals: **S — Subjective (listen), O — Objective (verify), A — Assessment (reason), P — Plan (act, counsel and follow up)**.
