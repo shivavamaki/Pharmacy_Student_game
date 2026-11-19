@@ -34,5 +34,7 @@ jobs:
         run: |
           node --check jrpg-online/worker.mjs
           node --check jrpg-online/room.mjs
+      - name: Install pinned Wrangler toolchain from backend lockfile
+        run: npm ci --prefix backend --include=dev --no-audit --no-fund
       - name: Validate Cloudflare Worker bundle without deployment
-        run: npx wrangler deploy --dry-run --config jrpg-online/wrangler.jsonc --outdir /tmp/jrpg-online-bundle
+        run: ./backend/node_modules/.bin/wrangler deploy --dry-run --config jrpg-online/wrangler.jsonc --outdir /tmp/jrpg-online-bundle
