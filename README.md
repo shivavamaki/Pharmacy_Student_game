@@ -27,3 +27,7 @@ See docs/jrpg-game-design.md for teaching objectives, acts, class mapping, encou
 ## Voting status
 
 The walkable demo simulates six ballots **within one browser** for review. It does not connect six actual students online. The server-side voting domain model and tests are present, but Durable Object + WebSockets and real identity verification are still pending. The action with the most votes wins; ties use the leader's vote when tied, otherwise Guard.
+
+## Stage 2 — real multiplayer transport (development only)
+
+\`jrpg-online/\` contains a separate Cloudflare Worker + Durable Object WebSocket service for authenticated 1–6-student parties. It reuses the existing Firebase JWT verification and *read-only* student/party membership queries, enforces leader-only map movement, and validates majority-vote combat on the server. The new Worker has an **isolated Wrangler configuration, no automatic deploy job and no existing Guild API modifications**. CI builds it with \`wrangler --dry-run\`; connection to the current browser Guild demo is the next stage. See [jrpg-online/README.md](jrpg-online/README.md).
