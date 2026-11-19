@@ -1,0 +1,49 @@
+name: JRPG Sprint 1 checks
+on:
+  push:
+    branches: [feature/pharmacy-guild-jrpg]
+    paths: ['jrpg-walk/**', 'frontend/jrpg/**', '.github/workflows/jrpg-sprint1.yml']
+  pull_request:
+    paths: ['jrpg-walk/**', 'frontend/jrpg/**', '.github/workflows/jrpg-sprint1.yml']
+permissions:
+  contents: read
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify legacy Guild tests remain green
+        run: npm ci && npm test
+      - name: Install isolated Phaser / Vite / TypeScript app
+        run: npm install --prefix jrpg-walk --no-audit --no-fund
+      - name: Check pure world and battle logic
+        run: npm run test --prefix jrpg-walk
+      - name: Type-check and build static walkable Guild
+        run: npm run build --prefix jrpg-walk
+      - name: Verify generated entrypoint
+        run: |
+          test -f frontend/jrpg/walk/index.html
+          grep -q 'assets/' frontend/jrpg/walk/index.html
+      - name: Install Chromium for desktop and mobile emulation
+        run: npx --prefix jrpg-walk playwright install --with-deps chromium
+      - name: Run browser interaction checks
+        run: npm run test:e2e --prefix jrpg-walk
+      - name: Upload deployable static game
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jrpg-walk-build
+          path: frontend/jrpg/walk/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload browser test traces on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: jrpg-walk-traces
+          path: jrpg-walk/test-results/
+          if-no-files-found: ignore
