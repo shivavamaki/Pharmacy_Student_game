@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {WORLD_WIDTH,WORLD_HEIGHT,PLAYER_START,GUILD_MASTER,TRAINING_PORTAL,tileAt,nextTile,isWalkable,canEnter,canInteract,isReachable} from '../src/world.mjs';
+import {WORLD_WIDTH,WORLD_HEIGHT,PLAYER_START,GUILD_MASTER,TRAINING_PORTAL,tileAt,nextTile,isWalkable,canEnter,canInteract,isReachable,shortestPath,routeToDestination} from '../src/world.mjs';
 import {chapters} from '../../frontend/jrpg/data.mjs';
 import {ACTIONS,startBattle,applyAction} from '../../frontend/jrpg/engine.mjs';
 test('guild map boundaries, obstacles and hero origin',()=>{
@@ -35,4 +35,29 @@ test('training battle reuses pure S/O/A/P and never issues official XP',()=>{
  assert.equal(Object.hasOwn(battle,'xp'),false);
  assert.equal(Object.hasOwn(battle,'gold'),false);
  assert.ok(ACTIONS.length>=6);
+});
+
+test('tap-to-move finds shortest collision-safe paths without teleporting',()=>{
+ const path=shortestPath(PLAYER_START,{x:10,y:9});
+ assert.deepEqual(path,[{x:10,y:9}]);
+ assert.equal(shortestPath(PLAYER_START,{x:4,y:4}),null);
+ assert.equal(shortestPath(PLAYER_START,{x:18,y:4}),null);
+ assert.equal(routeToDestination(PLAYER_START,{x:-1,y:3}),null);
+ assert.equal(routeToDestination(PLAYER_START,{x:1.5,y:3}),null);
+ const pathAroundWall=shortestPath({x:11,y:5},{x:13,y:5});
+ assert.ok(pathAroundWall.length>2);
+ for(const tile of pathAroundWall)assert.equal(canEnter(tile.x,tile.y),true);
+});
+
+test('selecting Guild Master and portal routes to an adjacent tile, not their occupied tile',()=>{
+ const gm=routeToDestination(PLAYER_START,GUILD_MASTER);
+ assert.equal(gm.interaction,'guild-master');
+ assert.deepEqual(gm.path,[{x:9,y:8}]);
+ assert.equal(canInteract(gm.destination,GUILD_MASTER),true);
+ assert.equal(gm.path.some(p=>p.x===GUILD_MASTER.x&&p.y===GUILD_MASTER.y),false);
+ const portal=routeToDestination(PLAYER_START,TRAINING_PORTAL);
+ assert.equal(portal.interaction,'training-portal');
+ assert.ok(portal.path.length>0);
+ assert.equal(canInteract(portal.destination,TRAINING_PORTAL),true);
+ assert.ok(portal.path.every(p=>canEnter(p.x,p.y)));
 });

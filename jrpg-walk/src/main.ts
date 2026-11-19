@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import './style.css';
 import {BootScene,GuildScene,EncounterScene} from './scenes';
+import {GUILD_MASTER,TRAINING_PORTAL,PLAYER_START} from './world.mjs';
 import {chapters} from '../../frontend/jrpg/data.mjs';
 import {startBattle,applyAction,ACTIONS} from '../../frontend/jrpg/engine.mjs';
 
@@ -96,15 +97,12 @@ document.addEventListener('keydown',event=>{
   event.preventDefault();battleWindow.hidden=true;battle=null;game.scene.start('Guild');$('interact').focus();
  }
 });
-for(const [id,dx,dy] of [['move-up',0,-1],['move-down',0,1],['move-left',-1,0],['move-right',1,0]] as const){
- const element=$(id);
- let interval:number|undefined;
- const move=()=>game.events.emit('guild:move',dx,dy);
- const stop=()=>{if(interval!==undefined){window.clearInterval(interval);interval=undefined;}};
- element.addEventListener('pointerdown',event=>{
-  event.preventDefault();stop();move();interval=window.setInterval(move,190);
- });
- for(const name of ['pointerup','pointercancel','pointerleave','lostpointercapture'])element.addEventListener(name,stop);
- element.addEventListener('click',event=>{if((event as PointerEvent).detail===0)move();});
- window.addEventListener('blur',stop);
+// Shared coordinate intents: future online mode sends these to the authoritative room.
+// In this isolated demo they remain local Phaser events with no network or DB writes.
+for(const [id,point] of [
+ ['destination-gm',GUILD_MASTER],
+ ['destination-portal',TRAINING_PORTAL],
+ ['destination-center',PLAYER_START]
+] as const){
+ $(id).addEventListener('click',()=>game.events.emit('guild:select-destination',point.x,point.y));
 }
