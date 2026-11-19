@@ -4,7 +4,7 @@ test('tap/click map selects a destination; Guild Master dialogue and turn-based 
  await page.goto('/jrpg/walk/');
  const canvas=page.locator('#game canvas');
  await expect(canvas).toBeVisible();
- await expect(page.locator('#status')).toContainText('Tap a destination');
+ await expect(page.locator('#status')).toContainText('Demo leader controls');
  await expect(page.locator('#coords')).toContainText('X:9 Y:9');
  await expect(page.locator('.team-banner')).toContainText('PARTY LEADER');
  await expect(page.locator('.team-banner')).toContainText('not online players');
@@ -47,7 +47,7 @@ test('tap-to-move buttons support accessible targets and turn-based combat',asyn
  await expect(page.locator('.student-work')).toContainText('นักศึกษาทุกคน');
  await expect(page.locator('.personal-tasks')).toHaveAttribute('target','_blank');
  await expect(page.locator('#game canvas')).toBeVisible();
- await expect(page.locator('.safety')).toContainText('ไม่มีการเข้าสู่ระบบ');
+ await expect(page.locator('.safety')).toContainText('ไม่ใช่ผู้เล่นออนไลน์จริง');
  await page.locator('#destination-portal').click();
  await expect(page.locator('#battle-overlay')).toBeVisible({timeout:15000});
  await expect(page.locator('#battle-actions button')).toHaveCount(7);
