@@ -1,7 +1,9 @@
+import { PLAYER_START, routeToDestination } from '../../jrpg-walk/src/world.mjs';
 // Pure server-authoritative online co-op rules. NOT wired to production Worker.
 // Adapter must verify Firebase identity and D1 membership before calling these functions.
 export const MAX_PLAYERS = 6;
 export const TURN_DURATION_MS = 45_000;
+export const PARTY_STEP_MS = 160; // one validated map tile per step
 const scenario = Object.freeze({
   id:'training',foe:'Whispering Doubt',fog:10,enemyImpact:2,
   prompt:'คำสั่งยาในสถานการณ์จำลองมีข้อมูลไม่ครบ ควรทำอย่างไร?',
@@ -15,7 +17,8 @@ const clone = value => structuredClone(value);
 function checkRoom(s){if(!s||!validId(s.id)||!Array.isArray(s.players))fail('invalid_room');}
 export function createRoom({id,partyId,hostId,now=0}){
   if(!validId(id)||!validId(partyId)||!validId(hostId)||!validNow(now))fail('invalid_room');
-  return {id,partyId,hostId,phase:'lobby',maxPlayers:MAX_PLAYERS,players:[],battle:null,
+  return {id,partyId,hostId,leaderId:hostId,phase:'lobby',maxPlayers:MAX_PLAYERS,players:[],battle:null,
+    world:{position:{...PLAYER_START},destination:null,route:[],nextStepAt:null,lastInteraction:null},
     version:1,createdAt:now,recentActionKeys:[]};
 }
 export function joinRoom(state,{id,displayName},now=0){
@@ -28,6 +31,55 @@ export function joinRoom(state,{id,displayName},now=0){
   next.players.push({id,displayName:displayName.trim(),connected:true,joinedAt:now});
   next.version++;return next;
 }
+// Only the verified leader can issue party-wide destination orders; individual player
+// devices are followers on the world map. The future Durable Object must serialize
+// calls and enforce party membership and clock checks before applying them.
+export function selectPartyDestination(state,{actorId,target,expectedVersion,now}){
+ checkRoom(state);
+ if(actorId!==state.leaderId)fail('leader_only');
+ if(!state.players.some(p=>p.id===actorId))fail('leader_not_seated');
+ if(state.phase!=='lobby')fail('travel_unavailable_during_battle');
+ if(!validNow(now)||!target||!Number.isInteger(target.x)||!Number.isInteger(target.y))fail('invalid_destination');
+ if(expectedVersion!==state.version)fail('stale_destination');
+ const plan=routeToDestination(state.world.position,target);
+ if(!plan)fail('blocked_destination');
+ const next=clone(state);
+ next.world.destination=plan.target;
+ next.world.route=plan.path;
+ next.world.nextStepAt=plan.path.length?now+PARTY_STEP_MS:null;
+ next.world.lastInteraction=plan.path.length?null:plan.interaction;
+ next.version++;return next;
+}
+// Advance the team's *single authoritative location* at the server-defined pace.
+// Members' visual formations derive from this shared location, never separate client moves.
+export function advancePartyMovement(state,now){
+ checkRoom(state);if(!validNow(now))fail('invalid_clock');
+ if(state.phase!=='lobby'||!state.world.route.length||now<state.world.nextStepAt)return state;
+ const next=clone(state);
+ while(next.world.route.length&&now>=next.world.nextStepAt){
+  next.world.position=next.world.route.shift();
+  next.world.nextStepAt+=PARTY_STEP_MS;
+ }
+ if(!next.world.route.length){
+  const route=routeToDestination(next.world.position,next.world.destination);
+  next.world.lastInteraction=route?.interaction||null;
+  next.world.destination=null;next.world.nextStepAt=null;
+ }
+ next.version++;return next;
+}
+export function transferLeadership(state,{actorId,newLeaderId,expectedVersion}){
+ checkRoom(state);
+ if(actorId!==state.leaderId)fail('leader_only');
+ if(expectedVersion!==state.version)fail('stale_leadership');
+ if(state.phase!=='lobby')fail('leader_change_unavailable');
+ if(!validId(newLeaderId)||!state.players.some(p=>p.id===newLeaderId&&p.connected))fail('invalid_new_leader');
+ const next=clone(state);
+ next.leaderId=newLeaderId;
+ next.world.destination=null;next.world.route=[];next.world.nextStepAt=null;
+ next.version++;return next;
+}
+// Other independent workflows (assignment/evidence upload, individual reflections)
+// are separate authenticated Worker endpoints and deliberately have NO leader guard.
 export function setConnection(state,id,connected){
   checkRoom(state);
   if(typeof connected!=='boolean')fail('invalid_connection');
@@ -38,11 +90,12 @@ export function setConnection(state,id,connected){
 export function startEncounter(state,{actorId,now=0}){
   checkRoom(state);
   if(!validNow(now))fail('invalid_clock');
-  if(actorId!==state.hostId)fail('host_only');
+  if(actorId!==state.leaderId)fail('leader_only');
   if(state.phase!=='lobby')fail('room_started');
   if(!state.players.some(p=>p.id===actorId))fail('host_not_seated');
   if(state.players.length<1||state.players.length>MAX_PLAYERS)fail('invalid_seats');
   const next=clone(state);next.phase='battle';
+  next.world.destination=null;next.world.route=[];next.world.nextStepAt=null;
   next.battle={status:'active',round:1,turnIndex:0,deadlineAt:now+TURN_DURATION_MS,
     morale:20,focus:4,fog:scenario.fog,seals:[],caseResolved:false,log:[]};
   next.version++;return next;
@@ -127,8 +180,14 @@ export function expireTurn(state,now){
 export function roomView(state){
   checkRoom(state);
   const b=state.battle;
-  return {id:state.id,partyId:state.partyId,phase:state.phase,version:state.version,maxPlayers:MAX_PLAYERS,
-    players:state.players.map(({id,displayName,connected})=>({id,displayName,connected})),
+  return {id:state.id,partyId:state.partyId,leaderId:state.leaderId,phase:state.phase,
+    version:state.version,maxPlayers:MAX_PLAYERS,
+    world:{position:{...state.world.position},
+      destination:state.world.destination?{...state.world.destination}:null,
+      isMoving:state.world.route.length>0,nextStepAt:state.world.nextStepAt,
+      lastInteraction:state.world.lastInteraction},
+    players:state.players.map(({id,displayName,connected})=>({id,displayName,connected,
+      isLeader:id===state.leaderId})),
     battle:b?{status:b.status,round:b.round,currentPlayerId:state.players[b.turnIndex]?.id||null,
       deadlineAt:b.deadlineAt,morale:b.morale,focus:b.focus,fog:b.fog,
       seals:[...b.seals],caseResolved:b.caseResolved,foe:scenario.foe,
