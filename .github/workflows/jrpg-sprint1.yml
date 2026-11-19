@@ -28,8 +28,8 @@ jobs:
         run: |
           test -f frontend/jrpg/walk/index.html
           grep -q 'assets/' frontend/jrpg/walk/index.html
-      - name: Install Chromium for desktop and mobile emulation
-        run: npx --prefix jrpg-walk playwright install --with-deps chromium
+      - name: Install headless Chromium for desktop and mobile emulation
+        run: cd jrpg-walk && npx playwright install --only-shell chromium
       - name: Run browser interaction checks
         run: npm run test:e2e --prefix jrpg-walk
       - name: Upload deployable static game
