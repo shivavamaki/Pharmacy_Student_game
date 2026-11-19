@@ -87,109 +87,167 @@ export function setConnection(state,id,connected){
   if(!seat)fail('not_in_room');
   seat.connected=connected;next.version++;return next;
 }
+// Each ballot is one cooperative combat round. The connected players seated when
+// the ballot opens are the electorate. Everyone gets one equally weighted vote.
+// We wait for all eligible votes or the 45-second deadline, whichever happens first.
+export const VOTE_DURATION_MS = TURN_DURATION_MS;
+const voteKey=(kind,choiceIndex)=>kind==='case-choice'?'case-choice:'+choiceIndex:kind;
+const voteChoices=(battle)=>{
+ const allowed=['listen','guard'];
+ if(battle.seals.includes('S')&&battle.focus>=1)allowed.push('verify');
+ if(battle.seals.includes('O')&&!battle.caseResolved)
+  allowed.push(...scenario.choices.map((_,i)=>'case-choice:'+i));
+ if(battle.seals.includes('O')&&battle.caseResolved&&battle.focus>=1)allowed.push('assess');
+ if(battle.seals.includes('A')&&battle.focus>=2)allowed.push('plan');
+ return allowed;
+};
+function openBallot(next,now,id){
+ const electorate=next.players.filter(p=>p.connected).map(p=>p.id);
+ next.battle.ballot={id,eligiblePlayerIds:electorate,votes:[],deadlineAt:now+VOTE_DURATION_MS};
+ next.battle.deadlineAt=next.battle.ballot.deadlineAt;
+}
 export function startEncounter(state,{actorId,now=0}){
-  checkRoom(state);
-  if(!validNow(now))fail('invalid_clock');
-  if(actorId!==state.leaderId)fail('leader_only');
-  if(state.phase!=='lobby')fail('room_started');
-  if(!state.players.some(p=>p.id===actorId))fail('host_not_seated');
-  if(state.players.length<1||state.players.length>MAX_PLAYERS)fail('invalid_seats');
-  const next=clone(state);next.phase='battle';
-  next.world.destination=null;next.world.route=[];next.world.nextStepAt=null;
-  next.battle={status:'active',round:1,turnIndex:0,deadlineAt:now+TURN_DURATION_MS,
-    morale:20,focus:4,fog:scenario.fog,seals:[],caseResolved:false,log:[]};
-  next.version++;return next;
+ checkRoom(state);
+ if(!validNow(now))fail('invalid_clock');
+ if(actorId!==state.leaderId)fail('leader_only');
+ if(state.phase!=='lobby')fail('room_started');
+ if(!state.players.some(p=>p.id===actorId&&p.connected))fail('leader_not_connected');
+ if(state.players.length<1||state.players.length>MAX_PLAYERS)fail('invalid_seats');
+ const next=clone(state);next.phase='battle';
+ next.world.destination=null;next.world.route=[];next.world.nextStepAt=null;
+ next.battle={status:'active',round:1,morale:20,focus:4,fog:scenario.fog,
+  seals:[],caseResolved:false,log:[],lastResult:null,ballot:null};
+ openBallot(next,now,1);
+ next.version++;return next;
 }
-function resolve(next,{actorId,kind,choiceIndex,now}){
-  const b=next.battle;
-  if(b.status!=='active')fail('battle_finished');
-  if(next.players[b.turnIndex]?.id!==actorId)fail('not_your_turn');
-  if(!validNow(now))fail('invalid_clock');
-  if(now>=b.deadlineAt)fail('turn_expired');
-  const has=key=>b.seals.includes(key);
-  let damage=0,note='';
-  switch(kind){
-    case 'listen':
-      if(!has('S'))b.seals.push('S');
-      b.focus=Math.min(6,b.focus+1);note='Listen (S)';break;
-    case 'verify':
-      if(!has('S'))fail('requires_subjective');
-      if(b.focus<1)fail('insufficient_focus');
-      b.focus--;if(!has('O'))b.seals.push('O');damage=2;note='Verify (O)';break;
-    case 'assess':
-      if(!has('O')||!b.caseResolved)fail('assessment_not_ready');
-      if(b.focus<1)fail('insufficient_focus');
-      b.focus--;if(!has('A'))b.seals.push('A');damage=3;note='Assess (A)';break;
-    case 'plan':
-      if(!has('A'))fail('requires_assessment');
-      if(b.focus<2)fail('insufficient_focus');
-      b.focus-=2;if(!has('P'))b.seals.push('P');damage=5;note='Plan (P)';break;
-    case 'guard':
-      b.focus=Math.min(6,b.focus+2);note='Consult / Guard';break;
-    case 'case-choice':
-      if(!has('O'))fail('case_not_ready');
-      if(b.caseResolved)fail('case_already_resolved');
-      if(!Number.isInteger(choiceIndex)||choiceIndex<0||choiceIndex>=scenario.choices.length)fail('invalid_choice');
-      if(choiceIndex===scenario.correctIndex){
-        b.caseResolved=true;b.focus=Math.min(6,b.focus+1);note='Correct case reasoning';
-      }else{b.morale=Math.max(0,b.morale-2);note='Remediation required';}
-      break;
-    default:fail('invalid_action');
-  }
-  if(damage){
-    b.fog=Math.max(0,b.fog-damage);
-    if(b.fog===0&&!['S','O','A','P'].every(has))b.fog=1;
-  }
-  b.log.push({actorId,kind,note,round:b.round});
-  if(b.morale<=0){b.status='lost';next.phase='finished';}
-  else if(b.fog===0&&['S','O','A','P'].every(has)){b.status='won';next.phase='finished';}
-  else if(b.turnIndex+1<next.players.length){b.turnIndex++;}
-  else{
-    b.turnIndex=0;b.round++;
-    b.morale=Math.max(0,b.morale-scenario.enemyImpact);
-    b.log.push({actorId:'enemy',kind:'enemy-turn',note:'Fog of confusion',round:b.round-1});
-    if(b.morale===0){b.status='lost';next.phase='finished';}
-  }
-  b.deadlineAt=now+TURN_DURATION_MS;
-  b.log=b.log.slice(-32);
-  return next;
+function applyWinningAction(battle,{kind,choiceIndex}){
+ const has=k=>battle.seals.includes(k);
+ let damage=0,shield=0,note='';
+ switch(kind){
+ case 'listen':
+  if(!has('S'))battle.seals.push('S');battle.focus=Math.min(6,battle.focus+1);
+  note='Listen (S)';break;
+ case 'verify':
+  if(!has('S')||battle.focus<1)fail('invalid_resolved_action');
+  battle.focus--;if(!has('O'))battle.seals.push('O');damage=2;note='Verify (O)';break;
+ case 'assess':
+  if(!has('O')||!battle.caseResolved||battle.focus<1)fail('invalid_resolved_action');
+  battle.focus--;if(!has('A'))battle.seals.push('A');damage=3;note='Assess (A)';break;
+ case 'plan':
+  if(!has('A')||battle.focus<2)fail('invalid_resolved_action');
+  battle.focus-=2;if(!has('P'))battle.seals.push('P');damage=5;note='Plan (P)';break;
+ case 'guard':
+  battle.focus=Math.min(6,battle.focus+2);shield=scenario.enemyImpact;note='Team Guard / Consult';break;
+ case 'case-choice':
+  if(!has('O')||battle.caseResolved||!Number.isInteger(choiceIndex)||
+    choiceIndex<0||choiceIndex>=scenario.choices.length)fail('invalid_resolved_action');
+  if(choiceIndex===scenario.correctIndex){
+   battle.caseResolved=true;battle.focus=Math.min(6,battle.focus+1);note='Correct case reasoning';
+  }else{battle.morale=Math.max(0,battle.morale-2);note='Case needs remediation';}
+  break;
+ default:fail('invalid_resolved_action');
+ }
+ if(damage){
+  battle.fog=Math.max(0,battle.fog-damage);
+  if(battle.fog===0&&!['S','O','A','P'].every(has))battle.fog=1;
+ }
+ return {shield,note};
 }
-export function submitTurn(state,{actorId,actionId,kind,choiceIndex,expectedVersion,now}){
-  checkRoom(state);
-  if(!validId(actorId)||!validId(actionId))fail('invalid_action_id');
-  if(!state.players.some(p=>p.id===actorId))fail('not_in_room');
-  const key=actorId+':'+actionId;
-  if(state.recentActionKeys.includes(key))return state;
-  if(state.phase!=='battle')fail('no_active_encounter');
-  if(!Number.isInteger(expectedVersion)||expectedVersion!==state.version)fail('stale_turn');
-  const next=resolve(clone(state),{actorId,kind,choiceIndex,now});
-  next.recentActionKeys.push(key);
-  next.recentActionKeys=next.recentActionKeys.slice(-64);
-  next.version++;return next;
+function finishBallot(next,now){
+ const battle=next.battle,ballot=battle.ballot;
+ if(!ballot||battle.status!=='active')fail('no_open_vote');
+ const counts=new Map();
+ for(const vote of ballot.votes){
+  const key=voteKey(vote.kind,vote.choiceIndex);
+  counts.set(key,(counts.get(key)||0)+1);
+ }
+ const highest=counts.size?Math.max(...counts.values()):0;
+ const tied=highest?Array.from(counts.keys()).filter(k=>counts.get(k)===highest):[];
+ const leaderVote=ballot.votes.find(v=>v.actorId===next.leaderId);
+ const leaderKey=leaderVote&&voteKey(leaderVote.kind,leaderVote.choiceIndex);
+ // One vote each; the leader can only break a deadlock, never override a majority.
+ // When the leader did not vote among the tied options, safely Guard.
+ const tieBreak=tied.length>1||tied.length===0;
+ const winnerKey=tied.length===1?tied[0]:(leaderKey&&tied.includes(leaderKey)?leaderKey:'guard');
+ let winner;
+ if(winnerKey.startsWith('case-choice:')){
+  winner={kind:'case-choice',choiceIndex:Number(winnerKey.slice('case-choice:'.length))};
+ }else winner={kind:winnerKey};
+ const {shield,note}=applyWinningAction(battle,winner);
+ battle.lastResult={ballotId:ballot.id,choice:winnerKey,counts:Object.fromEntries(counts),
+  voteCount:ballot.votes.length,eligibleCount:ballot.eligiblePlayerIds.length,
+  resolution:ballot.votes.length===ballot.eligiblePlayerIds.length?'all-voted':'deadline',
+  tieBreak:tieBreak?(winnerKey==='guard'?'safe-guard':'leader-vote'):null};
+ battle.log.push({actorId:'party',kind:winner.kind,note,round:battle.round,votes:ballot.votes.length});
+ if(battle.morale<=0){battle.status='lost';next.phase='finished';}
+ else if(battle.fog===0&&['S','O','A','P'].every(k=>battle.seals.includes(k))){
+  battle.status='won';next.phase='finished';
+ }else{
+  battle.morale=Math.max(0,battle.morale-Math.max(0,scenario.enemyImpact-shield));
+  battle.log.push({actorId:'enemy',kind:'enemy-turn',note:'Fog of confusion',round:battle.round});
+  if(battle.morale===0){battle.status='lost';next.phase='finished';}
+ }
+ battle.log=battle.log.slice(-32);
+ if(next.phase==='battle'){
+  battle.round++;
+  openBallot(next,now,ballot.id+1);
+ }else{
+  battle.ballot=null;
+  battle.deadlineAt=null;
+ }
+ return next;
 }
-export function expireTurn(state,now){
-  checkRoom(state);if(!validNow(now))fail('invalid_clock');
-  if(state.phase!=='battle'||state.battle.status!=='active'||now<state.battle.deadlineAt)return state;
-  const actorId=state.players[state.battle.turnIndex]?.id;
-  if(!actorId)fail('invalid_turn_order');
-  const next=resolve(clone(state),{actorId,kind:'guard',now:state.battle.deadlineAt-1});
-  next.battle.log.push({actorId,kind:'timeout',note:'Auto-guard',round:next.battle.round});
-  next.battle.deadlineAt=now+TURN_DURATION_MS;next.version++;
-  return next;
+export function submitVote(state,{actorId,actionId,kind,choiceIndex,ballotId,now}){
+ checkRoom(state);
+ if(!validId(actorId)||!validId(actionId))fail('invalid_vote_id');
+ if(!state.players.some(p=>p.id===actorId))fail('not_in_room');
+ const key=actorId+':'+actionId;
+ if(state.recentActionKeys.includes(key))return state; // idempotent retry
+ if(state.phase!=='battle'||!state.battle?.ballot)fail('no_open_vote');
+ if(!validNow(now))fail('invalid_clock');
+ const ballot=state.battle.ballot;
+ if(ballotId!==ballot.id)fail('stale_ballot');
+ if(now>=ballot.deadlineAt)fail('vote_expired');
+ if(!ballot.eligiblePlayerIds.includes(actorId))fail('not_eligible_this_ballot');
+ if(ballot.votes.some(v=>v.actorId===actorId))fail('already_voted');
+ const selection=voteKey(kind,choiceIndex);
+ if(!voteChoices(state.battle).includes(selection))fail('invalid_vote_choice');
+ const next=clone(state);
+ next.battle.ballot.votes.push({actorId,kind,choiceIndex:kind==='case-choice'?choiceIndex:null});
+ next.recentActionKeys.push(key);
+ next.recentActionKeys=next.recentActionKeys.slice(-64);
+ if(next.battle.ballot.votes.length===next.battle.ballot.eligiblePlayerIds.length){
+  finishBallot(next,now);
+ }
+ next.version++;return next;
 }
+export function expireVote(state,now){
+ checkRoom(state);if(!validNow(now))fail('invalid_clock');
+ if(state.phase!=='battle'||!state.battle?.ballot||now<state.battle.ballot.deadlineAt)return state;
+ const next=clone(state);finishBallot(next,now);next.version++;return next;
+}
+// Deprecated per-player combat entrypoints are intentionally fail-closed: clients
+// must not accidentally bypass collective voting through the old turn API.
+export function submitTurn(){fail('use_submitVote');}
+export function expireTurn(){fail('use_expireVote');}
 export function roomView(state){
-  checkRoom(state);
-  const b=state.battle;
-  return {id:state.id,partyId:state.partyId,leaderId:state.leaderId,phase:state.phase,
-    version:state.version,maxPlayers:MAX_PLAYERS,
-    world:{position:{...state.world.position},
-      destination:state.world.destination?{...state.world.destination}:null,
-      isMoving:state.world.route.length>0,nextStepAt:state.world.nextStepAt,
-      lastInteraction:state.world.lastInteraction},
-    players:state.players.map(({id,displayName,connected})=>({id,displayName,connected,
-      isLeader:id===state.leaderId})),
-    battle:b?{status:b.status,round:b.round,currentPlayerId:state.players[b.turnIndex]?.id||null,
-      deadlineAt:b.deadlineAt,morale:b.morale,focus:b.focus,fog:b.fog,
-      seals:[...b.seals],caseResolved:b.caseResolved,foe:scenario.foe,
-      prompt:scenario.prompt,choices:[...scenario.choices],log:[...b.log]}:null};
+ checkRoom(state);
+ const b=state.battle;
+ return {id:state.id,partyId:state.partyId,leaderId:state.leaderId,phase:state.phase,
+  version:state.version,maxPlayers:MAX_PLAYERS,
+  world:{position:{...state.world.position},
+   destination:state.world.destination?{...state.world.destination}:null,
+   isMoving:state.world.route.length>0,nextStepAt:state.world.nextStepAt,
+   lastInteraction:state.world.lastInteraction},
+  players:state.players.map(({id,displayName,connected})=>({id,displayName,connected,
+   isLeader:id===state.leaderId})),
+  battle:b?{status:b.status,round:b.round,deadlineAt:b.deadlineAt,morale:b.morale,
+   focus:b.focus,fog:b.fog,seals:[...b.seals],caseResolved:b.caseResolved,
+   foe:scenario.foe,prompt:scenario.prompt,choices:[...scenario.choices],
+   availableActions:voteChoices(b),
+   ballot:b.ballot?{id:b.ballot.id,deadlineAt:b.ballot.deadlineAt,
+    eligiblePlayerIds:[...b.ballot.eligiblePlayerIds],
+    votedPlayerIds:b.ballot.votes.map(v=>v.actorId),
+    votesReceived:b.ballot.votes.length,votesRequired:b.ballot.eligiblePlayerIds.length}:null,
+   lastResult:b.lastResult?structuredClone(b.lastResult):null,log:[...b.log]}:null};
 }
