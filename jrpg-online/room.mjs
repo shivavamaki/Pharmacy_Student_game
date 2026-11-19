@@ -32,9 +32,9 @@ export class JrpgRoom{
    if(!this.env.BRIDGE_SECRET||request.headers.get('X-JRPG-Bridge-Secret')!==this.env.BRIDGE_SECRET)
     return resp({error:'forbidden'},403);
    try{
-    if(path==='/mint'&&request.method==='POST')return this.mint(request);
+    if(path==='/mint'&&request.method==='POST')return await this.mint(request);
     if(path==='/connect'&&request.headers.get('Upgrade')?.toLowerCase()==='websocket')
-     return this.connect(request);
+     return await this.connect(request);
     return resp({error:'not_found'},404);
    }catch(e){return resp({error:safeCode(e)},Number.isInteger(e.status)?e.status:400);}
   });
