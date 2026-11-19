@@ -16,9 +16,13 @@ function fakeState(){
  };
  const ctx={storage,getWebSockets:()=>sockets,
   acceptWebSocket:ws=>sockets.push(ws)};
- const DB={prepare(sql){return {bind(party,actor){return {
-  first:async()=>party==='party1'&&['p1','p2'].includes(actor)?{profile_id:actor}:null
- }};}}};
+ const DB={
+  prepare(_sql){
+   return {bind(party,actor){
+    return {first:async()=>party==='party1'&&['p1','p2'].includes(actor)?{profile_id:actor}:null};
+   }};
+  }
+ };
  const env={DB,BRIDGE_SECRET:'isolated-test-secret'};
  return {ctx,env,sockets,records};
 }
