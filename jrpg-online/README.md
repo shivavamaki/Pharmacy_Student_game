@@ -89,3 +89,36 @@ separate SQLite storage, so no official XP or Gold is written.
 the current six-seat browser simulator a real multiplayer game. A separate
 authenticated online lobby/client integration and deployed Worker are
 required before multiplayer gameplay is publicly available.
+
+
+## Multiplayer Lobby Client (implemented on JRPG branch; safely disabled)
+
+Static page: \`frontend/jrpg/lobby/index.html\` → \`/jrpg/lobby/\` on the
+branch preview. It uses the current Firebase Google popup login with
+**in-memory persistence**, and the existing authenticated \`/api/me\`
+and \`/api/parties\` endpoints to show only the student's Guild parties.
+
+- Six live-seat placeholders, presence, leader, shared map, leader-only
+  destination selection and leadership transfer.
+- Combat voting: one vote per student device per server ballot, vote status,
+  permitted actions, totals after resolution and a safe tie display.
+- WebSocket client: single-use tickets via bearer HTTPS request; credentials
+  never go into URLs, cookies, localStorage, or sessionStorage.
+- Bounded automatic reconnect after socket closure, new ticket on each retry,
+  full party state refresh after reconnect, logout aborts/cleans sockets.
+- Individual assignment/evidence links remain in the existing Guild Portal.
+- The static map is a **lobby control overview** rather than an embedded Phaser
+  multiplayer scene. The latter needs a follow-up scene synchronization step.
+- No social chat, GM observer privileges, official rewards or student data writes.
+
+\`frontend/jrpg/lobby/runtime-config.mjs\` intentionally exports an EMPTY
+\`JRPG_ROOM_API_ORIGIN\`. **Join is disabled until a separate Cloudflare Worker
+is deployed, the exact origin is verified, and a branch-specific CSP
+connect-src (both \`https://\` and \`wss://\`) has been reviewed.** Do not
+switch on by guessing a workers.dev domain or reusing the existing API.
+The login itself additionally requires Firebase to authorize the branch
+preview domain.
+
+To test: \`node --test frontend/jrpg/lobby/test/*.test.mjs\`;
+GitHub Actions also checks it. Playwright runs desktop and Android-size
+offline-lobby layout checks as part of the isolated JRPG suite.

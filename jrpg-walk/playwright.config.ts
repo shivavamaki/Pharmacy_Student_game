@@ -10,10 +10,18 @@ export default defineConfig({
   {name:'desktop-chromium',use:{...devices['Desktop Chrome'],viewport:{width:1366,height:900}}},
   {name:'android-touch-emulation',use:{...devices['Pixel 7'],browserName:'chromium'}}
  ],
- webServer:{
-  command:'npm run dev -- --host 127.0.0.1',
-  url:'http://127.0.0.1:5173/jrpg/walk/',
-  reuseExistingServer:!process.env.CI,
-  timeout:90_000
- }
+ webServer:[
+  {
+   command:'npm run dev -- --host 127.0.0.1',
+   url:'http://127.0.0.1:5173/jrpg/walk/',
+   reuseExistingServer:!process.env.CI,
+   timeout:90_000
+  },
+  {
+   command:'python3 -m http.server 8070 --bind 127.0.0.1 --directory ../frontend',
+   url:'http://127.0.0.1:8070/jrpg/lobby/',
+   reuseExistingServer:!process.env.CI,
+   timeout:60_000
+  }
+ ]
 });

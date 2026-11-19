@@ -31,3 +31,7 @@ The walkable demo simulates six ballots **within one browser** for review. It do
 ## Stage 2 — real multiplayer transport (development only)
 
 \`jrpg-online/\` contains a separate Cloudflare Worker + Durable Object WebSocket service for authenticated 1–6-student parties. It reuses the existing Firebase JWT verification and *read-only* student/party membership queries, enforces leader-only map movement, and validates majority-vote combat on the server. The new Worker has an **isolated Wrangler configuration, no automatic deploy job and no existing Guild API modifications**. CI builds it with \`wrangler --dry-run\`; connection to the current browser Guild demo is the next stage. See [jrpg-online/README.md](jrpg-online/README.md).
+
+## Multiplayer Lobby UI
+
+The staged browser UI is at `/jrpg/lobby/` on the JRPG preview branch. It reuses Firebase login, authenticates existing Guild parties, offers leader-only map controls and per-member team votes through the isolated WebSocket protocol. **No live room connection is available until the separate Cloudflare Worker is deployed and the public origin is explicitly configured.** See `jrpg-online/README.md`. The existing single-browser simulator remains at `/jrpg/walk/`.
