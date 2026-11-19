@@ -6,6 +6,8 @@ test('tap/click map selects a destination; Guild Master dialogue and turn-based 
  await expect(canvas).toBeVisible();
  await expect(page.locator('#status')).toContainText('Tap a destination');
  await expect(page.locator('#coords')).toContainText('X:9 Y:9');
+ await expect(page.locator('.team-banner')).toContainText('PARTY LEADER');
+ await expect(page.locator('.team-banner')).toContainText('not online players');
 
  // Click the map one tile right of the hero. Initial camera shows world x=0..22,
  // scrollY is constrained to 16px; world (10,9) maps to local (168,136).
@@ -22,6 +24,7 @@ test('tap/click map selects a destination; Guild Master dialogue and turn-based 
  await expect(page.locator('#dialogue-text')).toContainText('ผู้ฝึกเภสัชกร');
  await page.locator('#dialogue-battle').click();
  await expect(page.locator('#battle-overlay')).toBeVisible();
+ await expect(page.locator('.combat-party span')).toHaveCount(6);
  await page.getByRole('button',{name:/ฟังเสียง/}).click();
  await page.getByRole('button',{name:/ตรวจสอบ/}).click();
  await expect(page.locator('#battle-case .answer')).toHaveCount(3);
@@ -40,7 +43,9 @@ test('tap-to-move buttons support accessible targets and turn-based combat',asyn
  await page.goto('/jrpg/walk/');
  await expect(page.getByRole('button',{name:/Guild Master/})).toBeVisible();
  await expect(page.getByRole('button',{name:/Training Portal/})).toBeVisible();
- await expect(page.locator('.travel-instruction')).toContainText('แตะหรือคลิก');
+ await expect(page.locator('.travel-instruction')).toContainText('หัวหน้าทีม');
+ await expect(page.locator('.student-work')).toContainText('นักศึกษาทุกคน');
+ await expect(page.locator('.personal-tasks')).toHaveAttribute('target','_blank');
  await expect(page.locator('#game canvas')).toBeVisible();
  await expect(page.locator('.safety')).toContainText('ไม่มีการเข้าสู่ระบบ');
  await page.locator('#destination-portal').click();
