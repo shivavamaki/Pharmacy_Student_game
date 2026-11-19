@@ -2,19 +2,21 @@
 <html lang="th">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#10182d"><meta name="description" content="Pharmacy Guild walkable Guild Hall JRPG training prototype">
-<title>Pharmacy Guild · Walkable Guild</title>  <script type="module" crossorigin src="/jrpg/walk/assets/index-Bb7eged-.js"></script>
-  <link rel="stylesheet" crossorigin href="/jrpg/walk/assets/index-oMNHo9zs.css">
+<title>Pharmacy Guild · Walkable Guild</title>  <script type="module" crossorigin src="/jrpg/walk/assets/index-d3kditth.js"></script>
+  <link rel="stylesheet" crossorigin href="/jrpg/walk/assets/index-BMpcgMg5.css">
 </head>
 <body>
 <a class="skip-link" href="#guild-main">ข้ามไปยังเกม</a>
-<header class="header"><a href="/jrpg/" class="back">← JRPG Chapters</a><strong>PHARMACY GUILD <span>· THE FOUR SEALS</span></strong><span class="alpha">SPRINT 1 · FICTIONAL DEMO</span></header>
+<header class="header"><a href="/jrpg/" class="back">← JRPG Chapters</a><strong>PHARMACY GUILD <span>· THE FOUR SEALS</span></strong><a class="personal-tasks" href="/#guild-content" target="_blank" rel="noopener noreferrer">My assignments ↗</a><span class="alpha">TEAM FORMATION DEMO</span></header>
 <main id="guild-main" class="page">
-<div class="intro"><p class="kicker">THE GUILD OF AROGEA</p><h1>ลานกิลด์แห่งรุ่งอรุณ</h1><p>เลือกจุดหมายบนแผนที่ ให้ตัวละครเดินอัตโนมัติ แล้วพูดคุยกับ Guild Master เพื่อเริ่มการต่อสู้แบบ Turn-based</p><p class="safety">เฉพาะเกมฝึกจำลอง · ไม่มีการเข้าสู่ระบบ / ส่งข้อมูล / บันทึกคะแนน · XP และการอนุมัติภารกิจจริงต้องผ่าน GM</p></div>
+<div class="intro"><p class="kicker">THE GUILD OF AROGEA</p><h1>ลานกิลด์แห่งรุ่งอรุณ</h1><p>หัวหน้าปาร์ตี้เลือกจุดหมายบนแผนที่ ทุกคนเดินไปด้วยกัน และเริ่มการต่อสู้แบบ Turn-based เป็นทีม</p><p class="safety">เดโมแสดงหัวหน้าปาร์ตี้กับผู้ติดตามสมมติอีก 5 ตัว ไม่ใช่ผู้เล่นออนไลน์จริง · สมาชิกทุกคนยังทำงานส่วนตัว เช่น ส่ง Assignment ได้ใน Guild Portal · ไม่มีการส่งคะแนนหรือ XP จริง</p></div>
 <section class="layout"><div class="game-panel">
 <div class="hud"><span id="status">กำลังโหลด Guild...</span><span id="coords" aria-live="off"></span></div>
+<div class="team-banner" role="note"><strong>👑 PARTY LEADER (DEMO)</strong>
+<span>Leader sets one shared destination · five NPC followers (not online players)</span></div>
 <div id="game" class="canvas-shell" role="application" aria-label="JRPG Guild map. Click or tap a destination to walk automatically"></div>
-<div class="controls" aria-label="เลือกจุดหมายบนแผนที่">
- <p class="travel-instruction">🗺️ แตะหรือคลิกจุดหมายบนแผนที่ ตัวละครจะเดินไปให้เองโดยหลบสิ่งกีดขวาง</p>
+<div class="controls" aria-label="หัวหน้าปาร์ตี้เลือกจุดหมายบนแผนที่">
+ <p class="travel-instruction">🗺️ หัวหน้าทีมแตะหรือคลิกจุดหมาย แล้วทั้งทีมจะเดินตามเส้นทางเดียวกัน</p>
  <div class="travel-buttons">
   <button id="destination-gm" type="button">✦ ไปหา Guild Master</button>
   <button id="destination-portal" type="button">⚔ ไปยัง Training Portal</button>
@@ -22,11 +24,16 @@
   <button id="interact" class="interact" type="button">พูดคุย / สำรวจใกล้ตัว</button>
  </div>
 </div>
-<p class="tips">Tap/click on the map to choose a destination, or use the location buttons. E / Enter / Space: interact nearby. Combat stays turn-based.</p>
+<p class="tips">Only the authorized Party Leader will control the shared world in online mode. Followers retain personal menus and assignment submission. E / Enter / Space: interact nearby. Combat stays turn-based.</p>
 </div><aside class="sidebar">
-<h2>QUEST JOURNAL</h2><p>Training Ground · main-week-01</p><div class="quest-card"><span>01</span><div><strong>พบกับ Guild Master</strong><p>แตะตัวละคร ✦ หรือเลือกปุ่มไปหา Guild Master เพื่อเดินไปพูดคุย</p></div></div><div class="quest-card"><span>02</span><div><strong>Four Seals Battle</strong><p>ใช้ S/O/A/P และตอบปริศนาสถานการณ์จำลอง</p></div></div><p id="journal" role="status">ยังไม่ได้เริ่มภารกิจฝึกจำลอง</p><a href="/#guild-content">เข้าสู่ระบบ Pharmacy Guild จริง</a>
+<h2>QUEST JOURNAL</h2><p>Training Ground · main-week-01</p><div class="quest-card"><span>01</span><div><strong>พบกับ Guild Master</strong><p>แตะตัวละคร ✦ หรือเลือกปุ่มไปหา Guild Master เพื่อเดินไปพูดคุย</p></div></div><div class="quest-card"><span>02</span><div><strong>Four Seals Battle</strong><p>ใช้ S/O/A/P และตอบปริศนาสถานการณ์จำลอง</p></div></div><p id="journal" role="status">ยังไม่ได้เริ่มภารกิจฝึกจำลอง</p>
+<div class="student-work"><strong>PERSONAL STUDENT TASKS</strong><p>นักศึกษาทุกคนสามารถส่งหลักฐานภารกิจ ดูงานของตัวเอง และใช้เมนูส่วนตัวได้โดยไม่ต้องเป็น Party Leader</p><a href="/#guild-content" target="_blank" rel="noopener noreferrer">เปิด My Assignments / Guild Portal ↗</a></div>
 </aside></section>
 </main>
 <section id="dialogue" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="dialogue-title"><div class="window"><div class="window-head">✦ THE GUILD MASTER</div><h2 id="dialogue-title">บทสนทนา</h2><p id="dialogue-text"></p><div class="window-actions"><button type="button" id="dialogue-battle">▶ ฝึกต่อสู้กับหมอก</button><button type="button" id="dialogue-close">กลับไปเดินสำรวจ</button></div></div></section>
-<section id="battle-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="battle-title"><div class="window battle-window"><div class="window-head">⚔ TRAINING SIMULATION</div><h2 id="battle-title">Whispering Doubt</h2><div id="battle-stats" class="stats"></div><div id="battle-seals" class="seals"></div><div id="battle-case" class="question"></div><div id="battle-actions" class="battle-actions"></div><ol id="battle-log" aria-live="polite"></ol><button id="battle-return" hidden type="button">↵ กลับไปที่กิลด์</button></div></section>
+<section id="battle-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="battle-title"><div class="window battle-window"><div class="window-head">⚔ TRAINING SIMULATION</div><h2 id="battle-title">Whispering Doubt</h2><div class="combat-party" aria-label="Prototype shared party battle representation">
+ <span class="combat-leader">👑 P1 Leader</span>
+ <span>P2 · Demo</span><span>P3 · Demo</span><span>P4 · Demo</span><span>P5 · Demo</span><span>P6 · Demo</span>
+</div><p class="combat-note">Six-slot battle preview only. Actual players will take their own turns; the leader initiates the encounter.</p>
+<div id="battle-stats" class="stats"></div><div id="battle-seals" class="seals"></div><div id="battle-case" class="question"></div><div id="battle-actions" class="battle-actions"></div><ol id="battle-log" aria-live="polite"></ol><button id="battle-return" hidden type="button">↵ กลับไปที่กิลด์</button></div></section>
 </body></html>
