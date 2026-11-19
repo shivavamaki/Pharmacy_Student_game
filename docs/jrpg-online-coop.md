@@ -10,7 +10,7 @@
 - 45-second turn timer by default. If absent or disconnected, the game auto-guards and advances; reconnect retains the original seat.
 - Server validates room membership, turn, selected action, correct answers, battle state and request version. Retries with the same action ID do not execute twice.
 - Players share party morale, focus, S/O/A/P seals, and enemy fog. Battles use fictional cases. They do not grant official XP, Gold, badges or grades.
-- The world can use live synchronized walking; turn-based combat is mandatory. Whether exploration movement must also be turn-based can be decided separately.
+- Exploration uses **destination selection**: each player taps or clicks a target on the visible map, then their avatar auto-walks along a validated obstacle-avoiding route. All players move independently during exploration; **only combat is turn-based**. The eventual online server must validate target coordinates, path collisions, travel rate and party/world scope rather than trusting the client-rendered position.
 - Room capacity does not alter or delete historical party_members rows in D1; if an educational party has more than six members, rooms require scheduling or approved splitting.
 
 ## Server architecture
@@ -31,7 +31,16 @@ The pure domain module at backend/src/jrpg-room-rules.mjs specifies max 6, atomi
 1. Review provider permissions and add isolated development-only Durable Object binding with a tested migration.
 2. Implement authenticated Worker ticket endpoint and DO WebSocket room with persistent state.
 3. Build six-seat lobby UI, ready/start, player presence and reconnect.
-4. Synchronize each avatar position in the shared Phaser Guild; validate movement on the server.
+4. Synchronize each avatar's selected destination and validated path in the shared Phaser Guild. Clients send destination intents (not arbitrary teleport coordinates); the Durable Object validates reachability, speed, obstacle collisions and state, then broadcasts movement to the other five players.
 5. Connect the four-seal combat interface to authoritative room actions and broadcasts.
 6. Test seven-player race, disconnect mid-turn, stale turns, dropped messages, replay attacks, privacy, Android/mobile, instructor GM spectator and one enemy turn per round.
 7. Ship to a separate JRPG branch preview only after all these checks pass.
+
+## Updated exploration input design
+
+- Tap/click a free map tile to walk there with shortest-path routing. Touch and mouse behave identically.
+- Tap Guild Master or the Training Portal to navigate to a walkable neighboring tile, then interact automatically.
+- Accessible location buttons provide the same target selection for players who cannot accurately tap small tiles.
+- Blocked or unreachable destinations produce clear feedback; tapping elsewhere while the hero is walking requests rerouting after the current tile animation.
+- Battle uses shared server-owned rounds, not real-time movement. Exploration does not consume combat turns.
+- **Current code is still an isolated solo preview.** Network movement synchronization is a future WebSocket/Durable Object step.

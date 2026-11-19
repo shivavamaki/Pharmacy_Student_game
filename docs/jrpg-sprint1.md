@@ -57,3 +57,9 @@ do **not** weaken CORS globally or point the preview at production D1.
 
 Security note: the generated Phaser bundle is static/public and must remain free of
 Firebase ID tokens, clinical records, private student data or Cloudflare credentials.
+
+## Destination-selected movement update
+
+The Guild's previous D-pad and WASD stepping controls have been replaced with **tap/click-to-move**. Select any walkable tile in the displayed Phaser map. The code-native shortest-path planner routes around buildings, water, walls, the NPC and the portal. Clicking an interactive NPC or portal automatically approaches an adjacent tile and triggers the interaction. Accessible quick destinations (Guild Master, Training Portal, Guild Center) serve as keyboard/touch alternatives. Selecting another target while moving schedules a recalculated route after the current step, without teleportation. The demo's S/O/A/P **combat remains turn-based**.
+
+This change is local to the walkable preview. In the future six-player online version, the room's Durable Object will validate destination intents and broadcast the authoritative positions. This prototype does not claim that six-player network travel is working yet.
